@@ -15,23 +15,48 @@ export default function KurallarPage() {
     },
     {
       id: "02",
-      title: "SPAM VE REKLAM YASAĞI",
-      description: "Platform içerisinde izinsiz reklam yapmak, sürekli aynı mesajı veya içeriği tekrarlayarak spam oluşturmak yasaktır. Kendi projelerinizi paylaşabileceğiniz özel alanlar dışında tanıtım yapılamaz."
+      title: "YASA DIŞI İÇERİK VE FAALİYETLER",
+      description: "Türkiye Cumhuriyeti kanunlarına aykırı içerikler, suç teşkil eden paylaşımlar, terör propagandası, dolandırıcılık faaliyetleri, nefret söylemi, tehdit ve şiddet çağrıları kesinlikle yasaktır."
     },
     {
       id: "03",
       title: "GİZLİLİK VE KİŞİSEL VERİLER",
-      description: "Başka üyelerin kişisel bilgilerini (isim, adres, telefon, fotoğraf vb.) onların açık rızası olmadan paylaşmak kesinlikle yasaktır. Topluluk içindeki güven ortamı en büyük önceliğimizdir."
+      description: "Başka üyelerin kişisel bilgilerini (isim, adres, telefon, fotoğraf vb.) onların açık rızası olmadan ifşa etmek (doxing) yasaktır. Topluluk içindeki güven ortamı en büyük önceliğimizdir."
     },
     {
       id: "04",
+      title: "TELİF HAKLARI VE FİKRİ MÜLKİYET",
+      description: "Telif hakkı ihlali oluşturabilecek içeriklerin paylaşılması yasaktır. Hak sahiplerinden gelen bildirimler doğrultusunda içerikler kaldırılabilir. Pinterest, TikTok ve diğer platformlardan yapılan alıntılarda kaynak belirtilmesine veya emeğe saygı gösterilmesine özen gösterilmelidir."
+    },
+    {
+      id: "05",
+      title: "SAHTE HESAPLAR VE BOTLAR",
+      description: "Bot kullanımı, otomatik içerik üretimi, hesap çoğaltma (multi-account), oy/etkileşim manipülasyonu ve platformun organik işleyişini bozacak her türlü faaliyet yasaktır."
+    },
+    {
+      id: "06",
+      title: "DIŞ BAĞLANTILAR VE ÜÇÜNCÜ TARAF SİTELER",
+      description: "Kullanıcılar tarafından paylaşılan harici bağlantıların (linklerin) içeriğinden ilgili kullanıcı sorumludur. Zararlı, oltalama (phishing) veya virüs içeren linkler paylaşmak yasaktır. TrChads üçüncü taraf sitelerin içeriklerinden sorumlu tutulamaz."
+    },
+    {
+      id: "07",
+      title: "SPAM VE REKLAM YASAĞI",
+      description: "Platform içerisinde izinsiz reklam yapmak, sürekli aynı mesajı veya içeriği tekrarlayarak spam oluşturmak yasaktır. Kendi projelerinizi paylaşabileceğiniz özel alanlar dışında ticari tanıtım yapılamaz."
+    },
+    {
+      id: "08",
+      title: "HASSAS VE RAHATSIZ EDİCİ İÇERİKLER",
+      description: "Aşırı şiddet (gore), kan, vahşet veya pornografik/müstehcen materyallerin topluluk içerisinde paylaşılması kesinlikle yasaktır. İçeriklerin genel kitle standartlarına uygunluğu gözetilmelidir."
+    },
+    {
+      id: "09",
       title: "KALİTELİ VE VİZYONER İÇERİK",
       description: "TrChads, modern ve gelişime açık bir topluluktur. Paylaşılan içeriklerin topluluğa değer katmasına, estetik ve bilgi açısından belirli bir standardın üzerinde olmasına özen gösterilmelidir."
     },
     {
-      id: "05",
-      title: "YÖNETİM KARARLARINA UYUM",
-      description: "Moderatörler ve yöneticiler, topluluğun düzenini sağlamakla görevlidir. Yönetim ekibinin uyarıları dikkate alınmalı ve kural ihlallerinde alınacak kararlara saygı gösterilmelidir."
+      id: "10",
+      title: "YÖNETİM VE MODERASYON YETKİSİ",
+      description: "Moderatörler ve yöneticiler, topluluğun düzenini sağlamakla görevlidir. Yönetim, topluluk düzenini korumak amacıyla herhangi bir içeriği kaldırma, düzenleme, görünürlüğünü azaltma veya kural ihlallerinde kullanıcı hesabını geçici/kalıcı olarak askıya alma hakkını saklı tutar."
     }
   ];
 

@@ -54,7 +54,7 @@ export default function Footer() {
             <span className="dergi-kicker text-white/40 mb-1">İLETİŞİM</span>
             <div className="flex flex-col gap-3">
               <a href={`mailto:${SITE_INFO.social.contact_email}`} className="group relative text-white/60 hover:text-white transition-colors duration-500 py-1 inline-block w-fit">
-                E-posta
+                E-posta support@trchads.com
                 <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-white/50 transition-all duration-500 group-hover:w-full"></span>
               </a>
               <a href={SITE_INFO.social.instagram} target="_blank" rel="noopener noreferrer" className="group relative text-white/60 hover:text-white transition-colors duration-500 py-1 inline-block w-fit">
