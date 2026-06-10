@@ -35,7 +35,7 @@ const STRICT_PHRASE_REGEX = /(denemebonusu|vipbahis|kaçakmaç|ccsatışı|çal�
 
 const SWEAR_ROOT_REGEX = buildRegex([
   "amk", "aq", "mk", "mq", "amq", "amg", "sik", "s.k", "siktir",
-  "s.ktir", "sikik", "sikeyim", "sokarım", "sokam", "oç", "oc", 
+  "s.ktir", "sikik", "sikeyim", "sokarım", "sokam", "oç",
   "o.ç", "orospu", "orspu", "ororpu", "piç", "pic", "p.ç", "yavşak", 
   "yavsak", "yvsak", "sürtük", "kahpe", "göt", "got", "g.t", "yarrak", 
   "yarak", "yarram", "yaram", "amcık", "amcik", "amına", "amina", 
