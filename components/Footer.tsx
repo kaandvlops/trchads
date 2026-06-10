@@ -57,10 +57,6 @@ export default function Footer() {
                 E-posta
                 <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-white/50 transition-all duration-500 group-hover:w-full"></span>
               </a>
-              <a href={SITE_INFO.social.twitter} target="_blank" rel="noopener noreferrer" className="group relative text-white/60 hover:text-white transition-colors duration-500 py-1 inline-block w-fit">
-                X (Twitter)
-                <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-white/50 transition-all duration-500 group-hover:w-full"></span>
-              </a>
               <a href={SITE_INFO.social.instagram} target="_blank" rel="noopener noreferrer" className="group relative text-white/60 hover:text-white transition-colors duration-500 py-1 inline-block w-fit">
                 Instagram
                 <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-white/50 transition-all duration-500 group-hover:w-full"></span>
