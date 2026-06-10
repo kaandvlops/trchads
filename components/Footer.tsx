@@ -29,7 +29,7 @@ export default function Footer() {
         {/* Sağ Kısım / Animasyonlu Linkler */}
         <div className="flex flex-wrap justify-center md:justify-end gap-8 md:gap-12 dergi-kicker mb-0">
           <Link href="/gizlilik" className="group relative hover:text-white transition-colors duration-500 py-1 inline-block">
-            Gizlilik
+            Gizlilik Ve Sözleşme
             <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-white/50 transition-all duration-500 group-hover:w-full"></span>
           </Link>
           

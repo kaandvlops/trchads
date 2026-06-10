@@ -11,9 +11,13 @@ export default function Navbar() {
   const { user, profile } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // YENİ: Sözleşme onaylı giriş modalı için state
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
-    if (isMobileMenuOpen) {
+    // Hem mobil menü hem de giriş modalı açıkken arkadaki kaydırmayı durdur
+    if (isMobileMenuOpen || isLoginModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -22,7 +26,7 @@ export default function Navbar() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isMobileMenuOpen]);
+  }, [isMobileMenuOpen, isLoginModalOpen]);
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
@@ -88,7 +92,8 @@ export default function Navbar() {
               </>
             ) : (
               <button 
-                onClick={handleGoogleLogin}
+                // YENİ: Artık direkt login yapmıyor, sözleşme modalını açıyor
+                onClick={() => setIsLoginModalOpen(true)}
                 className="dergi-btn hover:text-black hover:bg-white cursor-pointer py-3 px-8"
               >
                 Giriş Yap
@@ -96,7 +101,7 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobil Hamburger Butonu (z-index artırıldı ki menünün üstünde kalsın) */}
+          {/* Mobil Hamburger Butonu */}
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="md:hidden flex flex-col gap-1.5 z-[60] p-2 relative"
@@ -108,7 +113,7 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Mobil Açılır Menü (Header dışına çıkarıldı) */}
+      {/* Mobil Açılır Menü */}
       <div className={`fixed inset-0 bg-[#050505] z-[40] flex flex-col items-center justify-center gap-8 transition-all duration-500 md:hidden ${isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
         <nav className="flex flex-col items-center gap-8 dergi-kicker text-white/60">
           <Link href="/unluler" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white transition-colors">Sıralama</Link>
@@ -127,12 +132,47 @@ export default function Navbar() {
               <button onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} className="text-white/30 hover:text-white">Çıkış Yap</button>
             </>
           ) : (
-            <button onClick={() => { setIsMobileMenuOpen(false); handleGoogleLogin(); }} className="dergi-btn hover:bg-white hover:text-black">
+            <button 
+              // YENİ: Mobilde de butona basınca önce menüyü kapatıp modalı açıyor
+              onClick={() => { setIsMobileMenuOpen(false); setIsLoginModalOpen(true); }} 
+              className="dergi-btn hover:bg-white hover:text-black"
+            >
               Giriş Yap
             </button>
           )}
         </nav>
       </div>
+
+      {/* YENİ: GİRİŞ VE SÖZLEŞME MODALI */}
+      {isLoginModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-6">
+          <div className="bg-[#050505] border dergi-border p-8 md:p-12 max-w-lg w-full flex flex-col items-center text-center relative animate-title">
+            
+            {/* Kapat Butonu */}
+            <button 
+              onClick={() => setIsLoginModalOpen(false)} 
+              className="absolute top-4 right-6 text-white/30 hover:text-white transition-colors text-2xl font-light"
+            >
+              ×
+            </button>
+            
+            <span className="dergi-kicker mb-4 mt-2">KİMLİK DOĞRULAMA</span>
+            <h2 className="dergi-title text-3xl md:text-4xl mb-6">Giriş.</h2>
+            
+            <p className="dergi-body text-xs md:text-sm mb-10 leading-relaxed text-white/50">
+              Devam ederek, platformumuzun yasal kurallarını belirleyen <Link href="/gizlilik" onClick={() => setIsLoginModalOpen(false)} className="text-white/80 hover:text-white underline underline-offset-4 transition-colors">Kullanıcı Sözleşmesi</Link>'ni ve <Link href="/gizlilik" onClick={() => setIsLoginModalOpen(false)} className="text-white/80 hover:text-white underline underline-offset-4 transition-colors">Gizlilik Politikası</Link>'nı okuduğunuzu, anladığınızı ve gayrikabili rücu olarak kabul ettiğinizi onaylamış olursunuz.
+            </p>
+            
+            <button 
+              onClick={handleGoogleLogin} 
+              className="dergi-btn w-full hover:bg-white hover:text-black hover:border-white transition-all flex items-center justify-center gap-3"
+            >
+              {/* Basit bir Google G ikonu eklenebilir veya sadece metin */}
+              GOOGLE İLE DEVAM ET
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
