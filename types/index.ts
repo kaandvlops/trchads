@@ -61,8 +61,10 @@ export interface Comment {
   id: string;
   topic_id?: string;
   celebrity_id?: string;
+  character_id?: string; // YENİ: Karakter yorumları için
   user_id: string;
   content: string;
+  parent_id?: string | null; // YENİ: Yanıt sistemi (iç içe yorumlar) için
   created_at: string;
 }
 
@@ -82,15 +84,20 @@ export interface UserReport {
   reporter_id: string;
   reported_user_id: string;
   topic_id: string | null;
-  comment_id: string | null;
+  forum_comment_id: string | null; // YENİ: Vercel hatasını çözen kısım
+  celeb_comment_id: string | null; // YENİ: Vercel hatasını çözen kısım
+  character_comment_id: string | null; // YENİ: Vercel hatasını çözen kısım
   reason: string;
   status: 'pending' | 'resolved';
   created_at: string;
+  
   // İlişkisel (Relational) sorgular için ek tipler
   reporter?: Pick<UserProfile, 'full_name'>;
   reported_user?: Pick<UserProfile, 'full_name'>;
   topic?: Pick<Topic, 'id' | 'title' | 'content'>;
-  comment?: Pick<Comment, 'id' | 'content' | 'topic_id'>;
+  forum_comment?: Pick<Comment, 'id' | 'content' | 'topic_id'>;
+  celeb_comment?: Pick<Comment, 'id' | 'content' | 'celebrity_id'>;
+  character_comment?: Pick<Comment, 'id' | 'content' | 'character_id'>;
 }
 
 // =========================================

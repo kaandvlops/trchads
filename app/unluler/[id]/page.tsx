@@ -28,7 +28,8 @@ interface VoteScores {
 // ============================================================================
 function useCelebrityManager(celebrityId: string) {
   const router = useRouter();
-  const { user, profile: currentUserProfile, authLoading } = useAuth();
+  // DÜZELTME: Büyük "Loading" yerine küçük "loading" yapıldı
+  const { user, profile: currentUserProfile, loading } = useAuth();
   
   const [celebrity, setCelebrity] = useState<Celebrity | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
@@ -170,8 +171,9 @@ function useCelebrityManager(celebrityId: string) {
     }
   };
 
+  // DÜZELTME: Return objesinde küçük "loading" kullanıldı
   return { 
-    user, currentUserProfile, authLoading, dataLoading, 
+    user, currentUserProfile, loading, dataLoading, 
     celebrity, voteData, isUploadingImage, 
     fetchCelebData, handleImageUpload, handleUrlUpdate, handleImageDelete, handleDeleteCeleb 
   };
@@ -184,13 +186,15 @@ export default function UnluDetaySayfasi() {
   const params = useParams();
   const celebrityId = params.id as string;
 
+  // DÜZELTME: Karşılanırken küçük "loading" yapıldı
   const { 
-    user, currentUserProfile, authLoading, dataLoading, 
+    user, currentUserProfile, loading, dataLoading, 
     celebrity, voteData, isUploadingImage, 
     fetchCelebData, handleImageUpload, handleUrlUpdate, handleImageDelete, handleDeleteCeleb 
   } = useCelebrityManager(celebrityId);
 
-  if (authLoading || dataLoading) return <Loader />;
+  // DÜZELTME: Loader kontrolünde küçük "loading" kullanıldı
+  if (loading || dataLoading) return <Loader />;
   if (!celebrity) return <div className="w-full min-h-[50vh] flex items-center justify-center dergi-kicker">Kayıt Bulunamadı.</div>;
 
   const isAdmin = !!currentUserProfile?.is_admin;
