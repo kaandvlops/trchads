@@ -10,42 +10,58 @@ const LEET_MAP: Record<string, string> = {
   'b': '[b8]', 't': '[t7]'
 };
 
-const buildRegex = (words: string[], exact: boolean) => {
+// SADECE SPAM İÇİN: Leetspeak toleranslı regex builder
+const buildSpamRegex = (words: string[]) => {
   const patterns = words.map(word => {
     return word.split('').map(char => LEET_MAP[char] || char).join('[\\s\\W_]*');
   });
-  
-  const startBoundary = `(?:^|[\\s.,!?_\\-])`;
-  const endBoundary = exact ? `(?=[\\s.,!?_\\-]|$)` : ``;
-  
-  return new RegExp(`${startBoundary}(?:${patterns.join('|')})${endBoundary}`, 'i');
+  return new RegExp(`(?:^|[\\s.,!?_\\-])(?:${patterns.join('|')})(?=[\\s.,!?_\\-]|$)`, 'i');
 };
 
-const BAN_ROOT_REGEX = buildRegex([
- "casino", "bet", "bahis", "slot", "rulet", "bonus", "kumar", 
+// KÜFÜR İÇİN: Tam kelime sınırı ile çalışan, substring yakalamayan builder
+const buildSwearRegex = (words: string[]) => {
+  const patterns = words.map(word => {
+    // Her karakter için leetspeak alternatifleri + isteğe bağlı ayırıcılar
+    const charPattern = word.split('').map(char => {
+      const mapped = LEET_MAP[char] || char;
+      return mapped.replace(/\[|\]/g, '').split('').join('');
+    }).join('[\\s\\W_]*');
+    return charPattern;
+  });
+  // \b kelime sınırı kullanarak substring eşleşmeyi engelle
+  return new RegExp(`\\b(?:${patterns.join('|')})\\b`, 'i');
+};
+
+// SPAM KELİMELERİ (Leetspeak toleranslı, substring'e izin verilebilir)
+const BAN_ROOT_REGEX = buildSpamRegex([
+  "casino", "bet", "bahis", "slot", "rulet", "bonus", "kumar", 
   "deneme bonusu", "freespin", "çevrimsiz", "iddaa", "illegal",
   "kaçak maç", "poker", "blackjack", "aviator", "sweet bonanza",
   "papara kiralama", "hesap kiralama", "kolay para", "yasadışı",
   "kripto sinyal", "vip grup", "forex", "canlı bahis", "yatırımsız",
   "şikesi", "hilesi", "escort", "eskort", "mutlu son", "masaj", 
   "jigolo", "şugardadi", "sugar daddy", "onlyfans"
-], false);
+]);
 
 const STRICT_PHRASE_REGEX = /(denemebonusu|vipbahis|kaçakmaç|ccsatışı|çalıntıkart|şifrekırma|kolaypara|garantigelir|evdençalışkazan)/i;
 
-const SWEAR_ROOT_REGEX = buildRegex([
-  "amk", "aq", "mk", "mq", "amq", "amg", "sik", "s.k", "siktir",
-  "s.ktir", "sikik", "sikeyim", "sokarım", "sokam", "oç",
-  "o.ç", "orospu", "orspu", "ororpu", "piç", "pic", "p.ç", "yavşak", 
-  "yavsak", "yvsak", "sürtük", "kahpe", "göt", "got", "g.t", "yarrak", 
+// KÜFÜR KELİMELERİ (Tam kelime sınırı, substring yok)
+const SWEAR_WORDS = [
+  "amk", "aq", "mk", "mq", "amq", "amg", "sik", "siktir",
+  "sikik", "sikeyim", "sokarım", "sokam", "oç",
+  "orospu", "orspu", "ororpu", "piç", "yavşak", 
+  "yavsak", "yvsak", "sürtük", "kahpe", "göt", "yarrak", 
   "yarak", "yarram", "yaram", "amcık", "amcik", "amına", "amina", 
   "ibne", "ipne", "gavat", "kavat", "puşt", "pust", "pezevenk", 
-  "fahişe", "kaltak", "döl", "meme", "am", "sıç", "sic", "sıçayım"
-], false);
+  "fahişe", "kaltak", "döl", "sıç", "sic", "sıçayım"
+];
 
-const EXACT_SWEAR_REGEX = buildRegex([
-  "mal", "seks", "bet", "oç", "oc", "amk", "aq", "mk"
-], true);
+const EXACT_SWEAR_WORDS = [
+  "mal", "seks", "oç", "oc", "amk", "aq", "mk"
+];
+
+const SWEAR_ROOT_REGEX = buildSwearRegex(SWEAR_WORDS);
+const EXACT_SWEAR_REGEX = buildSwearRegex(EXACT_SWEAR_WORDS);
 
 const MOD_QUEUE_REGEX = /\b(forex|hack|kripto sinyal|iptv|sanal seks|sugar daddy|hitler|nazizm|satılık|ucuz|kampanya)\b/i;
 
@@ -89,10 +105,12 @@ export function detectSpam(rawText: string): SpamResult {
 
   const noSpaceText = normalizedText.replace(/[\s_]+/g, "");
 
+  // SPAM KONTROLÜ (substring'e toleranslı)
   if (BAN_ROOT_REGEX.test(normalizedText) || STRICT_PHRASE_REGEX.test(noSpaceText)) {
     return { isClean: false, action: "ban", reason: "İllegal, Yetişkin İçerik veya Dolandırıcılık tespiti." };
   }
 
+  // KÜFÜR KONTROLÜ (tam kelime sınırı, substring yok)
   if (SWEAR_ROOT_REGEX.test(normalizedText) || EXACT_SWEAR_REGEX.test(normalizedText)) {
     return { isClean: false, action: "reject", reason: "Topluluk kurallarına aykırı dil tespiti." };
   }
@@ -102,7 +120,6 @@ export function detectSpam(rawText: string): SpamResult {
   }
 
   if (SYSTEM_REGEX.GENERAL_LINK.test(singleLineText)) {
-    // YENİ: pin.it kısa linki (https://pin.it/5GeVPItmE) medyaların içine eklendi
     const SAFE_MEDIA_REGEX = /https?:\/\/(?:www\.)?tiktok\.com\/@[\w.-]+\/video\/\d+(?:\?[^\s]*)?|https?:\/\/\S+\.gif|https?:\/\/(?:www\.|[a-z]{2}\.)?pinterest\.com\/pin\/\d+\/?|https?:\/\/pin\.it\/[a-zA-Z0-9]+/gi;
     
     const mediaMatches = singleLineText.match(SAFE_MEDIA_REGEX);
