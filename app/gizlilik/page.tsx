@@ -1,103 +1,252 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Kullanıcı Sözleşmesi | TrChads",
-  description: "TrChads platformunun kullanım koşulları, yasal uyarılar ve kullanıcı sözleşmesi.",
+  title: "Gizlilik Politikası | TrChads",
+  description: "TrChads platformunun kişisel veri işleme politikası, KVKK uyumlu gizlilik bildirimi ve kullanıcı hakları.",
 };
 
-export default function SozlesmePage() {
-  const sections = [
+export default function GizlilikPage() {
+  const dataCategories = [
     {
-      id: "01",
-      title: "TARAFLAR VE KABUL",
-      content: "Bu sözleşme, TrChads ('Platform', 'Site', 'Biz') ile Site'ye Google altyapısı üzerinden giriş yapan veya Site'yi ziyaret eden kullanıcı ('Kullanıcı', 'Siz') arasında akdedilmiştir. Site'ye giriş yaparak, Site'yi kullanarak, forumda içerik üreterek veya medya paylaşımında bulunarak bu sözleşmedeki tüm şartları gayrikabili rücu olarak okuduğunuzu, anladığınızı ve kabul ettiğinizi beyan etmiş sayılırsınız."
+      category: "KİMLİK BİLGİLERİ",
+      examples: "Google profil adı, soyadı, profil fotoğrafı URL'si, Google ID",
+      purpose: "Hesap oluşturma, kimlik doğrulama, forum paylaşımlarında gösterim",
+      legalBasis: "Sözleşmenin ifası (KVKK md. 5/2-c)",
     },
     {
-      id: "02",
-      title: "GOOGLE İLE GİRİŞ VE HESAP GÜVENLİĞİ",
-      content: "TrChads, kullanıcı hesaplarını yönetmek için Supabase ve Google OAuth altyapısını kullanmaktadır. Platformumuz doğrudan herhangi bir şifre talep etmez veya saklamaz. Sistemimize giriş yaptığınızda yalnızca Google tarafından sağlanan temel profil bilgileriniz alınır. Google hesabınızın ve bağlı cihazlarınızın güvenliğinden tamamen siz sorumlusunuz. Hesabınız üzerinden gerçekleştirilen her türlü forum paylaşımı, yorum ve medya yüklemesinin bizzat sizin tarafınızdan yapıldığı hukuken karine olarak kabul edilir."
+      category: "İLETİŞİM BİLGİLERİ",
+      examples: "E-posta adresi (Google hesabınıza bağlı)",
+      purpose: "Hesap doğrulama, güvenlik bildirimleri, yasal talepler",
+      legalBasis: "Sözleşmenin ifası (KVKK md. 5/2-c)",
     },
     {
-      id: "03",
-      title: "FORUM KULLANIMI VE KULLANICI İÇERİKLERİ (ÖNEMLİ)",
-      content: "TrChads özgür ve açık bir topluluk forumudur. Kullanıcılar forum içerisinde yeni konular açabilir, mevcut konulara yorum yazabilir ve tartışmalara katılabilir. Platformda paylaşılan tüm başlıklar, mesajlar, fikirler ve yorumlar (Kullanıcı Tarafından Oluşturulan İçerik) tamamen ilgili kullanıcının şahsi görüşünü yansıtır ve hukuki/cezai sorumluluğu münhasıran kendisine aittir. TrChads yönetimi, paylaşılan içeriklerin doğruluğunu, yasallığını veya güvenilirliğini garanti etmez, önceden denetleme (sansür) yükümlülüğü taşımaz. Hakaret, tehdit, şantaj, nefret söylemi, yasa dışı yönlendirme veya Türkiye Cumhuriyeti yasalarına aykırı herhangi bir içerik paylaşımı kesinlikle yasaktır."
+      category: "LOKASYON VE TEKNİK VERİLER",
+      examples: "IP adresi, tarayıcı bilgisi, cihaz tipi, erişim zamanı, coğrafi konum (yaklaşık)",
+      purpose: "Güvenlik, spam önleme, analitik, yasal yükümlülükler",
+      legalBasis: "Meşru menfaat (KVKK md. 5/2-f) ve yasal yükümlülük (KVKK md. 5/2-ç)",
     },
     {
-      id: "04",
-      title: "FOTOĞRAF, MEDYA VE DIŞ BAĞLANTI PAYLAŞIMI",
-      content: "Kullanıcılar platform üzerinde kendi cihazlarından fotoğraf/görsel yükleyebilir; TikTok video bağlantıları, Pinterest pinleri/panoları veya diğer üçüncü taraf platformlara ait bağlantıları forum içerisinde metin veya gömülü (embed) olarak paylaşabilirler. Paylaşılan tüm TikTok, Pinterest veya benzeri dış bağlantıların ve yüklenen görsellerin telif hakkı ihlali içermediği, müstehcenlik, şiddet veya yasa dışı unsurlar barındırmadığı kullanıcının beyanı ve sorumluluğu altındadır. TrChads, üçüncü taraf platformların (TikTok, Pinterest vb.) gizlilik politikalarından veya içeriklerinden sorumlu tutulamaz."
+      category: "KULLANICI İÇERİKLERİ",
+      examples: "Forum başlıkları, yorumlar, yüklenen fotoğraflar, TikTok/Pinterest bağlantıları",
+      purpose: "Platform hizmetinin sunulması, topluluk içeriğinin oluşturulması",
+      legalBasis: "Açık rıza (KVKK md. 5/1) ve sözleşmenin ifası (KVKK md. 5/2-c)",
+    },
+  ];
+
+  const userRights = [
+    {
+      right: "BİLGİ ALMA HAKKI",
+      description: "Kişisel verilerinizin işlenip işlenmediğini, işlenme amacını ve verilerin aktarıldığı üçüncü tarafları öğrenme hakkı.",
+      article: "KVKK md. 11/1-a, b, d",
     },
     {
-      id: "05",
-      title: "ÜÇÜNCÜ TARAF SORUMLULUK REDDİ VE TAZMİNAT",
-      content: "Platformda kullanıcılar tarafından paylaşılan linkler (TikTok, Pinterest, YouTube vb.) üzerinden erişilen harici web sitelerinin içeriği TrChads'in kontrolünde değildir. Bu linklere tıklamak kullanıcının kendi riskindedir. Ayrıca kullanıcı; siteye yüklediği, paylaştığı veya gömdüğü herhangi bir görsel, video veya metin sebebiyle üçüncü şahısların veya kurumların TrChads'e yöneltebileceği her türlü yasal talebi, cezayı ve mahkeme masrafını ilk talepte, nakden ve defaten tazmin etmekle mükelleftir."
+      right: "DÜZELTME VE TAMAMLAMA",
+      description: "Yanlış veya eksik işlenen kişisel verilerinizin düzeltilmesini veya tamamlanmasını talep etme hakkı.",
+      article: "KVKK md. 11/1-c",
     },
     {
-      id: "06",
-      title: "FİKRİ MÜLKİYET VE TELİF HAKLARI",
-      content: "Platformda yer alan TrChads'e ait logo, tasarım (CSS/HTML/JS yapıları), marka kimliği, metinler ve kodların tüm fikri mülkiyet hakları TrChads yayıncısına aittir ve izinsiz kopyalanamaz. Kullanıcılar, Site'ye yükledikleri her türlü içerik ve fotoğraf için TrChads'e bu içerikleri platformda sergileme, çoğaltma ve dağıtma konusunda dünya çapında, ücretsiz ve sürekli bir lisans vermiş sayılırlar. Telif hakkı ihlali durumlarında yürürlükteki mevzuat gereği 'Uyar-Kaldır' prensibi işletilir."
+      right: "SİLME HAKKI (UNUTULMA HAKKI)",
+      description: "KVKK'da öngörülen şartlar çerçevesinde kişisel verilerinizin silinmesini talep etme hakkı. Ancak yasal yükümlülükler ve topluluk bütünlüğü gereği bazı veriler anonimleştirilerek saklanabilir.",
+      article: "KVKK md. 11/1-d",
     },
     {
-      id: "07",
-      title: "KİŞİSEL VERİLERİN KORUNMASI (KVKK)",
-      content: "Kullanıcıların siteyi kullanımı sırasında elde edilen kişisel veriler (Google profil bilgileri, IP adresleri, log kayıtları), 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında işlenmektedir. Platform, adli veya idari makamlardan (mahkemeler, savcılıklar, siber suçlarla mücadele birimleri) usulüne uygun bir talep gelmesi halinde, yasal yükümlülükleri gereği kullanıcılara ait IP adreslerini ve erişim loglarını ilgili resmi makamlarla paylaşmakla yükümlüdür."
+      right: "İŞLEMENİN DURDURULMASI",
+      description: "Verilerinizin hukuka aykırı işlendiğini düşünüyorsanız işleme faaliyetinin durdurulmasını talep etme hakkı.",
+      article: "KVKK md. 11/1-e",
     },
     {
-      id: "08",
-      title: "HİZMETİN KESİNTİSİ VE DEĞİŞİKLİKLER",
-      content: "TrChads, platformu ve sunduğu özellikleri 'olduğu gibi' ve 'mevcut olduğu kadarıyla' sunar. Sitenin 7/24 kesintisiz, virüssüz veya hatasız çalışacağını, verilerin (kullanıcıların açtığı konular, yüklediği fotoğraflar veya gönderdiği TikTok/Pinterest linkleri) kaybolmayacağını garanti etmez. Yönetim, platformun tamamını, bir kısmını veya veritabanını önceden haber vermeksizin silme, kapatma veya değiştirme hakkını saklı tutar."
+      right: "ZARARIN GİDERİLMESİ",
+      description: "KVKK hükümlerine aykırı işleme nedeniyle uğradığınız zararın giderilmesini talep etme hakkı.",
+      article: "KVKK md. 11/1-f",
     },
     {
-      id: "09",
-      title: "MODERASYON, HESAP İPTALİ VE UZAKLAŞTIRMA (BAN)",
-      content: "Topluluk kurallarına, ahlaka, yasalara veya bu sözleşmeye aykırı davranan, spam yapan, platformun işleyişini bozucu yazılımlar kullanan veya diğer kullanıcıları rahatsız eden kişilerin hesapları, açtıkları konular, yorumları ve medyaları TrChads yönetimi tarafından hiçbir uyarı yapılmaksızın kalıcı veya geçici olarak silinebilir/askıya alınabilir. Yönetimin verdiği ban kararları nihaidir ve itiraza kapalıdır."
+      right: "İTİRAZ HAKKI",
+      description: "Özel nedenlerinize dayanarak, meşru menfaat temeline dayalı işlemelere itiraz etme hakkı.",
+      article: "KVKK md. 11/1-e",
+    },
+  ];
+
+  const thirdParties = [
+    {
+      name: "Supabase Inc.",
+      purpose: "Veritabanı yönetimi, kimlik doğrulama, dosya depolama",
+      data: "Profil bilgileri, forum içerikleri, IP adresleri",
+      location: "ABD (GDPR/KVKK uyumlu veri işleme sözleşmesi)",
+      policy: "https://supabase.com/privacy",
     },
     {
-      id: "10",
-      title: "UYUŞMAZLIKLARIN ÇÖZÜMÜ",
-      content: "Bu sözleşmeden doğabilecek her türlü ihtilafın çözümünde Türkiye Cumhuriyeti kanunları esastır. Hukuki uyuşmazlıklarda TrChads'in sunucu kayıtları, veritabanı logları ve dijital delilleri HMK madde 193 anlamında kesin delil teşkil eder. İhtilafların çözümünde İstanbul Mahkemeleri ve İcra Daireleri yetkilidir."
-    }
+      name: "Google LLC",
+      purpose: "OAuth kimlik doğrulama, profil bilgileri alımı",
+      data: "Ad, soyad, e-posta, profil fotoğrafı",
+      location: "ABD",
+      policy: "https://policies.google.com/privacy",
+    },
+    {
+      name: "Vercel Inc.",
+      purpose: "Hosting ve CDN hizmetleri",
+      data: "IP adresi, erişim logları, tarayıcı bilgisi",
+      location: "ABD",
+      policy: "https://vercel.com/legal/privacy-policy",
+    },
   ];
 
   return (
     <main className="w-full flex flex-col items-center pt-24 pb-32 px-6 md:px-12 relative z-10">
       
-      {/* Başlık Alanı */}
+      {/* Başlık */}
       <div className="max-w-[85rem] w-full flex flex-col gap-6 mb-20 animate-title text-center md:text-left">
-        <span className="dergi-kicker text-[#EAEAEA]">YASAL BİLDİRİM VE ŞARTLAR</span>
-        <h1 className="dergi-title text-4xl md:text-6xl">Kullanıcı Sözleşmesi.</h1>
+        <span className="dergi-kicker text-[#EAEAEA]">6698 SAYILI KVKK KAPSAMINDA</span>
+        <h1 className="dergi-title text-4xl md:text-6xl">Gizlilik Politikası.</h1>
         <p className="dergi-body max-w-3xl mt-4">
-          Lütfen TrChads platformunu kullanmadan önce aşağıdaki yasal metni dikkatlice okuyunuz. Siteyi kullanmanız, içerik üretmeniz veya Google hesabınız ile giriş yapmanız, bu şartları gayrikabili rücu olarak kabul ettiğiniz anlamına gelir.
+          TrChads olarak kişisel verilerinizin güvenliği bizim için en üst önceliktir. Bu politika, hangi verileri topladığımızı, nasıl kullandığımızı ve haklarınızı açık bir şekilde belirtmektedir.
         </p>
       </div>
 
-      {/* Sözleşme Maddeleri */}
-      <div className="max-w-[85rem] w-full flex flex-col gap-12 bg-black/30 p-6 md:p-12 border dergi-border rounded-sm">
-        {sections.map((section, index) => (
+      {/* Veri Sorumlusu */}
+      <div className="max-w-[85rem] w-full flex flex-col gap-4 mb-16 pb-10 border-b border-white/5">
+        <span className="dergi-kicker text-white/40">VERİ SORUMLUSU</span>
+        <p className="dergi-body text-white/60">
+          TrChads platformunun veri sorumlusu, platformu işleten gerçek veya tüzel kişidir. Kişisel verileriniz, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında işlenmektedir. Veri sorumlusuna ilişkin güncel bilgiler için iletişim sayfamızdan bize ulaşabilirsiniz.
+        </p>
+      </div>
+
+      {/* Veri Kategorileri */}
+      <div className="max-w-[85rem] w-full flex flex-col gap-12 mb-20">
+        <span className="dergi-kicker text-[#EAEAEA]">İŞLENEN VERİLER</span>
+        
+        {dataCategories.map((data, index) => (
           <div 
-            key={section.id} 
+            key={data.category}
             className={`flex flex-col gap-4 pb-10 ${
-              index === sections.length - 1 ? "" : "border-b border-white/5"
+              index === dataCategories.length - 1 ? "" : "border-b border-white/5"
             }`}
           >
-            <div className="flex items-center gap-4">
-              <span className="text-white/20 font-light text-xl md:text-2xl">{section.id}.</span>
-              <h2 className="text-lg md:text-xl font-normal tracking-wide text-white/90">
-                {section.title}
-              </h2>
+            <h2 className="text-lg md:text-xl font-normal tracking-wide text-white/90">
+              {data.category}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:pl-4">
+              <div className="flex flex-col gap-1">
+                <span className="dergi-kicker text-white/30 mb-0 text-[10px]">ÖRNEK VERİLER</span>
+                <span className="text-white/50 text-sm font-light leading-relaxed">
+                  {data.examples}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="dergi-kicker text-white/30 mb-0 text-[10px]">AMAÇ</span>
+                <span className="text-white/50 text-sm font-light leading-relaxed">
+                  {data.purpose}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="dergi-kicker text-white/30 mb-0 text-[10px]">HUKUKİ DAYANAK</span>
+                <span className="text-white/50 text-sm font-light leading-relaxed">
+                  {data.legalBasis}
+                </span>
+              </div>
             </div>
-            <p className="dergi-body md:pl-10 text-justify leading-relaxed">
-              {section.content}
-            </p>
           </div>
         ))}
+      </div>
 
-        {/* Son Güncelleme Tarihi */}
-        <div className="mt-8 pt-8 border-t border-white/10 md:pl-10">
-          <p className="dergi-kicker">
-            SON GÜNCELLEME: {new Date().toLocaleDateString('tr-TR')}
-          </p>
+      {/* Üçüncü Taraflar */}
+      <div className="max-w-[85rem] w-full bg-black/30 p-6 md:p-12 border dergi-border rounded-sm mb-20">
+        <span className="dergi-kicker text-[#EAEAEA] mb-6 block">VERİ AKTARIMI</span>
+        <h2 className="dergi-subtitle mb-6">Üçüncü Taraf Hizmet Sağlayıcılar</h2>
+        <p className="dergi-body mb-8">
+          Kişisel verileriniz, platform hizmetlerinin sunulması için aşağıdaki üçüncü taraflarla sınırlı ölçüde paylaşılabilir. Her bir sağlayıcı ile GDPR ve KVKK'ya uygun veri işleme sözleşmeleri imzalanmıştır.
+        </p>
+
+        <div className="flex flex-col gap-6">
+          {thirdParties.map((party) => (
+            <div key={party.name} className="flex flex-col gap-3 p-4 border border-white/5 rounded-sm">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-white/80 text-sm font-light">{party.name}</span>
+                <a 
+                  href={party.policy} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-white/30 text-xs hover:text-white/60 transition-colors underline underline-offset-4"
+                >
+                  Gizlilik Politikası →
+                </a>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-white/40 font-extralight">
+                <span><span className="text-white/20">Amaç:</span> {party.purpose}</span>
+                <span><span className="text-white/20">Aktarılan Veri:</span> {party.data}</span>
+                <span><span className="text-white/20">Konum:</span> {party.location}</span>
+              </div>
+            </div>
+          ))}
         </div>
+      </div>
+
+      {/* Kullanıcı Hakları */}
+      <div className="max-w-[85rem] w-full flex flex-col gap-12 mb-20">
+        <span className="dergi-kicker text-[#EAEAEA]">HAKLARINIZ</span>
+        
+        {userRights.map((right, index) => (
+          <div 
+            key={right.right}
+            className={`flex flex-col md:flex-row gap-4 md:gap-12 pb-10 ${
+              index === userRights.length - 1 ? "" : "border-b border-white/5"
+            }`}
+          >
+            <div className="w-full md:w-1/3 flex flex-col gap-1">
+              <span className="dergi-kicker text-white/30 mb-0 text-[10px]">{right.article}</span>
+              <h3 className="text-white/80 text-sm font-light">{right.right}</h3>
+            </div>
+            <div className="w-full md:w-2/3">
+              <p className="dergi-body text-white/50 text-sm leading-relaxed">
+                {right.description}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Hak Kullanımı */}
+      <div className="max-w-[85rem] w-full bg-black/30 p-6 md:p-12 border dergi-border rounded-sm mb-20">
+        <span className="dergi-kicker text-[#EAEAEA] mb-6 block">BAŞVURU</span>
+        <h2 className="dergi-subtitle mb-6">Haklarınızı Nasıl Kullanabilirsiniz?</h2>
+        <p className="dergi-body mb-6">
+          KVKK md. 11 kapsamındaki haklarınızı kullanmak için aşağıdaki yöntemlerle başvuruda bulunabilirsiniz. Başvurunuz en geç 30 gün içinde yanıtlanacaktır.
+        </p>
+        <div className="flex flex-col gap-3 md:pl-4">
+          <div className="flex gap-4 items-start">
+            <span className="text-white/20 text-sm">01.</span>
+            <span className="text-white/50 text-sm font-light">
+              E-posta: <a href="mailto:privacy@trchads.com" className="text-white/70 hover:text-white transition-colors underline underline-offset-4">privacy@trchads.com</a>
+            </span>
+          </div>
+          <div className="flex gap-4 items-start">
+            <span className="text-white/20 text-sm">02.</span>
+            <span className="text-white/50 text-sm font-light">
+              Platform üzerinden: Profil sayfanızdan "Veri Talebi" seçeneği (yakında)
+            </span>
+          </div>
+          <div className="flex gap-4 items-start">
+            <span className="text-white/20 text-sm">03.</span>
+            <span className="text-white/50 text-sm font-light">
+              Kişisel Verileri Koruma Kurumu'na şikayet hakkınız saklıdır (KVKK md. 14)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Saklama Süreleri */}
+      <div className="max-w-[85rem] w-full flex flex-col gap-4 mb-16">
+        <span className="dergi-kicker text-white/40">VERİ SAKLAMA</span>
+        <p className="dergi-body text-white/60 leading-relaxed">
+          Kişisel verileriniz, işleme amaçlarının gerektirdiği süre boyunca ve yasal zamanaşımı süreleri (genellikle 10 yıl) boyunca saklanır. Hesabınızı sildiğinizde, profil bilgileriniz ve kimlik verileriniz 30 gün içinde silinir; ancak forum paylaşımlarınız topluluk bütünlüğü açısından anonimleştirilerek saklanabilir. IP adresleri ve erişim logları güvenlik amacıyla 1 yıl boyunca saklanır.
+        </p>
+      </div>
+
+      {/* Son Güncelleme */}
+      <div className="max-w-[85rem] w-full pt-8 border-t border-white/5">
+        <p className="dergi-kicker text-white/20">
+          SON GÜNCELLEME: {new Date().toLocaleDateString('tr-TR')} — BU POLİTİKA, KVKK VE GDPR HÜKÜMLERİNE UYGUN OLARAK HAZIRLANMIŞTIR.
+        </p>
       </div>
 
     </main>

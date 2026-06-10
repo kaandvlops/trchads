@@ -35,24 +35,19 @@ const isValidSocialLink = (url: string, platform: 'instagram' | 'tiktok' | 'spot
   }
 };
 
-// YENİ: Profil Fotoğrafı (Avatar) için Kesin Güvenlik Kalkanı
 const isValidAvatarUrl = (url: string) => {
-  if (!url.trim()) return true; // Boş bırakılabilir
+  if (!url.trim()) return true; 
   if (url.length > 255) return false;
   
   try {
     const urlObject = new URL(url);
-    // Sadece http veya https kabul edilir (data: veya javascript: engellenir)
     if (urlObject.protocol !== 'http:' && urlObject.protocol !== 'https:') return false;
 
-    // Uzantı kontrolü (Linkin sonu bunlardan biriyle bitmek zorunda, parametreleri ayırıyoruz)
     const pathname = urlObject.pathname.toLowerCase();
     const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
     
-    // Dicebear (rastgele avatar sistemi) ve bilinen resim sağlayıcılarına izin ver
     if (urlObject.hostname.includes('dicebear.com') || urlObject.hostname.includes('ui-avatars.com')) return true;
 
-    // Normal linkler için uzantı denetimi
     const hasValidExtension = validExtensions.some(ext => pathname.endsWith(ext));
     if (!hasValidExtension) return false;
 
@@ -113,6 +108,10 @@ export default function ProfilSayfasi() {
   
   const [warnings, setWarnings] = useState<UserWarning[]>([]);
 
+  // SİLME İŞLEMİ İÇİN YENİ STATE'LER
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [editForm, setEditForm] = useState({
     full_name: "", bio: "", avatar_url: "", instagram_url: "", tiktok_url: "", spotify_url: "",
   });
@@ -166,7 +165,6 @@ export default function ProfilSayfasi() {
     if (trimmedName.length > 50) return setErrorMsg("İsim en fazla 50 karakter olabilir.");
     if (editForm.bio && editForm.bio.trim().length > 500) return setErrorMsg("Biyografi en fazla 500 karakter olabilir.");
     
-    // YENİ: Avatar URL Güvenlik Kontrolü
     const formattedAvatar = editForm.avatar_url.trim() ? formatUrl(editForm.avatar_url) : null;
     if (formattedAvatar && !isValidAvatarUrl(formattedAvatar)) {
       return setErrorMsg("Geçersiz Profil Fotoğrafı URL'si. Sadece geçerli bir resim linki girilmelidir (.jpg, .png, .gif vb).");
@@ -184,7 +182,7 @@ export default function ProfilSayfasi() {
         .update({
           full_name: trimmedName, 
           bio: editForm.bio.trim(), 
-          avatar_url: formattedAvatar, // Güvenli avatar kaydediliyor
+          avatar_url: formattedAvatar, 
           instagram_url: formatUrl(editForm.instagram_url), 
           tiktok_url: formatUrl(editForm.tiktok_url), 
           spotify_url: formatUrl(editForm.spotify_url),
@@ -211,6 +209,40 @@ export default function ProfilSayfasi() {
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // YENİ: YASAL UYUMLU PROFİL SİLME (SOFT DELETE) FONKSİYONU
+  const handleDeleteAccount = async () => {
+    if (!profile) return;
+    setIsDeleting(true);
+    setErrorMsg("");
+
+    try {
+      // 1. Profil tablosunu anonimleştiriyoruz (IP ve id baki kalıyor)
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: "Silinmiş Kullanıcı",
+          bio: null,
+          avatar_url: null,
+          instagram_url: null,
+          tiktok_url: null,
+          spotify_url: null,
+          is_deleted: true, // Supabase'de bu sütunu eklediğinden emin ol!
+          deleted_at: new Date().toISOString()
+        })
+        .eq("id", profile.id);
+
+      if (error) throw error;
+
+      // 2. Auth oturumunu sonlandır ve ana sayfaya at
+      await supabase.auth.signOut();
+      window.location.href = "/"; 
+    } catch (error: unknown) {
+      setErrorMsg("Hesap silinirken sunucu kaynaklı bir hata oluştu.");
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -326,6 +358,44 @@ export default function ProfilSayfasi() {
                 <StatBlock label="Etkileşim" value={profile.total_comments} />
                 <div className="w-[1px] h-12 bg-white/10 hidden sm:block"></div>
                 <StatBlock label="Açılan Konu" value={profile.total_topics} />
+              </div>
+
+              {/* YENİ: TEHLİKELİ BÖLGE (HESAP SİLME) */}
+              <div className="mt-16 w-full border-t border-red-500/20 pt-10">
+                <h3 className="text-red-500 font-mono text-xs uppercase tracking-[0.4em] mb-4 flex items-center gap-3">
+                  Tehlikeli Bölge
+                </h3>
+                
+                {!showDeleteConfirm ? (
+                  <button 
+                    onClick={() => setShowDeleteConfirm(true)} 
+                    className="dergi-btn py-3 px-6 bg-transparent border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500 transition-colors text-sm"
+                  >
+                    Hesabımı Kalıcı Olarak Sil
+                  </button>
+                ) : (
+                  <div className="bg-[#050505] border border-red-500/30 p-6 md:p-8 flex flex-col gap-6">
+                    <p className="dergi-body text-red-200/80 text-sm">
+                      Hesabınızı silmek istediğinize emin misiniz? Profiliniz sistemden anonimleştirilerek kaldırılacaktır. Ancak yasal zorunluluklar gereği IP kayıtlarınız veritabanında loglanmaya devam eder. Bu işlem geri alınamaz.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <button 
+                        onClick={handleDeleteAccount} 
+                        disabled={isDeleting}
+                        className="dergi-btn flex-1 bg-red-900/50 text-red-200 border-red-500/50 hover:bg-red-500 hover:text-white disabled:opacity-50"
+                      >
+                        {isDeleting ? "Siliniyor..." : "Evet, Hesabımı Sil"}
+                      </button>
+                      <button 
+                        onClick={() => setShowDeleteConfirm(false)} 
+                        disabled={isDeleting}
+                        className="dergi-btn flex-1 bg-transparent border-white/20 hover:border-white/50 disabled:opacity-50"
+                      >
+                        Vazgeç
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {warnings.length > 0 && (
