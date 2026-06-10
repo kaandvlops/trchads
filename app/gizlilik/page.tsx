@@ -10,32 +10,52 @@ export default function SozlesmePage() {
     {
       id: "01",
       title: "TARAFLAR VE KABUL",
-      content: "Bu sözleşme, TrChads ('Platform', 'Site', 'Biz') ile Site'ye Google altyapısı üzerinden giriş yapan veya Site'yi ziyaret eden kullanıcı ('Kullanıcı', 'Siz') arasında akdedilmiştir. Site'ye giriş yaparak veya Site'yi kullanarak bu sözleşmedeki tüm şartları gayrikabili rücu olarak kabul etmiş sayılırsınız."
+      content: "Bu sözleşme, TrChads ('Platform', 'Site', 'Biz') ile Site'ye Google altyapısı üzerinden giriş yapan veya Site'yi ziyaret eden kullanıcı ('Kullanıcı', 'Siz') arasında akdedilmiştir. Site'ye giriş yaparak, Site'yi kullanarak, forumda içerik üreterek veya medya paylaşımında bulunarak bu sözleşmedeki tüm şartları gayrikabili rücu olarak okuduğunuzu, anladığınızı ve kabul ettiğinizi beyan etmiş sayılırsınız."
     },
     {
       id: "02",
       title: "GOOGLE İLE GİRİŞ VE HESAP GÜVENLİĞİ",
-      content: "TrChads, kullanıcı hesaplarını yönetmek için Supabase ve Google OAuth altyapısını kullanmaktadır. Platformumuz herhangi bir şifre talep etmez veya saklamaz. Sistemimize giriş yaptığınızda yalnızca Google tarafından sağlanan temel profil bilgileriniz (İsim, E-posta, Profil Fotoğrafı) alınır. Google hesabınızın güvenliğinden tamamen siz sorumlusunuz. Hesabınız üzerinden yapılan tüm işlemlerin sizin tarafınızdan yapıldığı kabul edilir."
+      content: "TrChads, kullanıcı hesaplarını yönetmek için Supabase ve Google OAuth altyapısını kullanmaktadır. Platformumuz doğrudan herhangi bir şifre talep etmez veya saklamaz. Sistemimize giriş yaptığınızda yalnızca Google tarafından sağlanan temel profil bilgileriniz alınır. Google hesabınızın ve bağlı cihazlarınızın güvenliğinden tamamen siz sorumlusunuz. Hesabınız üzerinden gerçekleştirilen her türlü forum paylaşımı, yorum ve medya yüklemesinin bizzat sizin tarafınızdan yapıldığı hukuken karine olarak kabul edilir."
     },
     {
       id: "03",
-      title: "İÇERİK VE YASAL SORUMLULUK (ÖNEMLİ)",
-      content: "TrChads bir topluluk forumudur. Kullanıcılar tarafından oluşturulan başlıklar, mesajlar, görseller ve tüm içerikler (User-Generated Content) tamamen ilgili kullanıcının yasal sorumluluğundadır. TrChads yönetimi, paylaşılan içeriklerin doğruluğunu, yasallığını veya güvenilirliğini garanti etmez ve önceden denetleme yükümlülüğü taşımaz. Hakaret, tehdit, telif hakkı ihlali veya Türkiye Cumhuriyeti yasalarına (ve uluslararası hukuka) aykırı herhangi bir içerikten doğacak adli ve idari yaptırımlarda tek muhatap içeriği üreten kullanıcıdır."
+      title: "FORUM KULLANIMI VE KULLANICI İÇERİKLERİ (ÖNEMLİ)",
+      content: "TrChads özgür ve açık bir topluluk forumudur. Kullanıcılar forum içerisinde yeni konular açabilir, mevcut konulara yorum yazabilir ve tartışmalara katılabilir. Platformda paylaşılan tüm başlıklar, mesajlar, fikirler ve yorumlar (Kullanıcı Tarafından Oluşturulan İçerik) tamamen ilgili kullanıcının şahsi görüşünü yansıtır ve hukuki/cezai sorumluluğu münhasıran kendisine aittir. TrChads yönetimi, paylaşılan içeriklerin doğruluğunu, yasallığını veya güvenilirliğini garanti etmez, önceden denetleme (sansür) yükümlülüğü taşımaz. Hakaret, tehdit, şantaj, nefret söylemi, yasa dışı yönlendirme veya Türkiye Cumhuriyeti yasalarına aykırı herhangi bir içerik paylaşımı kesinlikle yasaktır."
     },
     {
       id: "04",
-      title: "FİKRİ MÜLKİYET VE TELİF HAKLARI",
-      content: "Platformda yer alan TrChads'e ait logo, tasarım (CSS/HTML/JS yapıları), metinler ve kodların tüm fikri mülkiyet hakları TrChads yayıncısına aittir. İzinsiz kopyalanamaz. Kullanıcılar, Site'ye yükledikleri içeriklerin telif haklarına sahip olduklarını veya paylaşmak için gerekli izinleri aldıklarını beyan ederler. Bir telif ihlali durumunda 'Uyar-Kaldır' prensibi işletilir."
+      title: "FOTOĞRAF, MEDYA VE DIŞ BAĞLANTI PAYLAŞIMI",
+      content: "Kullanıcılar platform üzerinde kendi cihazlarından fotoğraf/görsel yükleyebilir; TikTok video bağlantıları, Pinterest pinleri/panoları veya diğer üçüncü taraf platformlara ait bağlantıları forum içerisinde metin veya gömülü (embed) olarak paylaşabilirler. Paylaşılan tüm TikTok, Pinterest veya benzeri dış bağlantıların ve yüklenen görsellerin telif hakkı ihlali içermediği, müstehcenlik, şiddet veya yasa dışı unsurlar barındırmadığı kullanıcının beyanı ve sorumluluğu altındadır. TrChads, üçüncü taraf platformların (TikTok, Pinterest vb.) gizlilik politikalarından veya içeriklerinden sorumlu tutulamaz."
     },
     {
       id: "05",
-      title: "HİZMETİN KESİNTİSİ VE DEĞİŞİKLİKLER",
-      content: "TrChads, platformu 'olduğu gibi' sunar. Sitenin 7/24 kesintisiz, hatasız çalışacağını veya verilerin kaybolmayacağını garanti etmez. Yönetim, önceden haber vermeksizin platformun tamamını veya bir kısmını kapatma, özelliklerini değiştirme veya kullanıcı hesaplarını askıya alma hakkını saklı tutar."
+      title: "ÜÇÜNCÜ TARAF SORUMLULUK REDDİ VE TAZMİNAT",
+      content: "Platformda kullanıcılar tarafından paylaşılan linkler (TikTok, Pinterest, YouTube vb.) üzerinden erişilen harici web sitelerinin içeriği TrChads'in kontrolünde değildir. Bu linklere tıklamak kullanıcının kendi riskindedir. Ayrıca kullanıcı; siteye yüklediği, paylaştığı veya gömdüğü herhangi bir görsel, video veya metin sebebiyle üçüncü şahısların veya kurumların TrChads'e yöneltebileceği her türlü yasal talebi, cezayı ve mahkeme masrafını ilk talepte, nakden ve defaten tazmin etmekle mükelleftir."
     },
     {
       id: "06",
-      title: "HESAP İPTALİ VE UZAKLAŞTIRMA (BAN)",
-      content: "Topluluk kurallarına, yasalara veya bu sözleşmeye aykırı davranan kullanıcıların hesapları (ve Google kimlikleri ile platforma erişimleri), site yönetimi tarafından hiçbir uyarı yapılmaksızın ve gerekçe gösterilmeksizin kalıcı veya geçici olarak askıya alınabilir."
+      title: "FİKRİ MÜLKİYET VE TELİF HAKLARI",
+      content: "Platformda yer alan TrChads'e ait logo, tasarım (CSS/HTML/JS yapıları), marka kimliği, metinler ve kodların tüm fikri mülkiyet hakları TrChads yayıncısına aittir ve izinsiz kopyalanamaz. Kullanıcılar, Site'ye yükledikleri her türlü içerik ve fotoğraf için TrChads'e bu içerikleri platformda sergileme, çoğaltma ve dağıtma konusunda dünya çapında, ücretsiz ve sürekli bir lisans vermiş sayılırlar. Telif hakkı ihlali durumlarında yürürlükteki mevzuat gereği 'Uyar-Kaldır' prensibi işletilir."
+    },
+    {
+      id: "07",
+      title: "KİŞİSEL VERİLERİN KORUNMASI (KVKK)",
+      content: "Kullanıcıların siteyi kullanımı sırasında elde edilen kişisel veriler (Google profil bilgileri, IP adresleri, log kayıtları), 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında işlenmektedir. Platform, adli veya idari makamlardan (mahkemeler, savcılıklar, siber suçlarla mücadele birimleri) usulüne uygun bir talep gelmesi halinde, yasal yükümlülükleri gereği kullanıcılara ait IP adreslerini ve erişim loglarını ilgili resmi makamlarla paylaşmakla yükümlüdür."
+    },
+    {
+      id: "08",
+      title: "HİZMETİN KESİNTİSİ VE DEĞİŞİKLİKLER",
+      content: "TrChads, platformu ve sunduğu özellikleri 'olduğu gibi' ve 'mevcut olduğu kadarıyla' sunar. Sitenin 7/24 kesintisiz, virüssüz veya hatasız çalışacağını, verilerin (kullanıcıların açtığı konular, yüklediği fotoğraflar veya gönderdiği TikTok/Pinterest linkleri) kaybolmayacağını garanti etmez. Yönetim, platformun tamamını, bir kısmını veya veritabanını önceden haber vermeksizin silme, kapatma veya değiştirme hakkını saklı tutar."
+    },
+    {
+      id: "09",
+      title: "MODERASYON, HESAP İPTALİ VE UZAKLAŞTIRMA (BAN)",
+      content: "Topluluk kurallarına, ahlaka, yasalara veya bu sözleşmeye aykırı davranan, spam yapan, platformun işleyişini bozucu yazılımlar kullanan veya diğer kullanıcıları rahatsız eden kişilerin hesapları, açtıkları konular, yorumları ve medyaları TrChads yönetimi tarafından hiçbir uyarı yapılmaksızın kalıcı veya geçici olarak silinebilir/askıya alınabilir. Yönetimin verdiği ban kararları nihaidir ve itiraza kapalıdır."
+    },
+    {
+      id: "10",
+      title: "UYUŞMAZLIKLARIN ÇÖZÜMÜ",
+      content: "Bu sözleşmeden doğabilecek her türlü ihtilafın çözümünde Türkiye Cumhuriyeti kanunları esastır. Hukuki uyuşmazlıklarda TrChads'in sunucu kayıtları, veritabanı logları ve dijital delilleri HMK madde 193 anlamında kesin delil teşkil eder. İhtilafların çözümünde İstanbul Mahkemeleri ve İcra Daireleri yetkilidir."
     }
   ];
 
@@ -47,7 +67,7 @@ export default function SozlesmePage() {
         <span className="dergi-kicker text-[#EAEAEA]">YASAL BİLDİRİM VE ŞARTLAR</span>
         <h1 className="dergi-title text-4xl md:text-6xl">Kullanıcı Sözleşmesi.</h1>
         <p className="dergi-body max-w-3xl mt-4">
-          Lütfen TrChads platformunu kullanmadan önce aşağıdaki yasal metni dikkatlice okuyunuz. Siteyi kullanmanız, içerik üretmeniz veya Google hesabınız ile giriş yapmanız, bu şartları kabul ettiğiniz anlamına gelir.
+          Lütfen TrChads platformunu kullanmadan önce aşağıdaki yasal metni dikkatlice okuyunuz. Siteyi kullanmanız, içerik üretmeniz veya Google hesabınız ile giriş yapmanız, bu şartları gayrikabili rücu olarak kabul ettiğiniz anlamına gelir.
         </p>
       </div>
 
@@ -66,7 +86,7 @@ export default function SozlesmePage() {
                 {section.title}
               </h2>
             </div>
-            <p className="dergi-body md:pl-10 text-justify">
+            <p className="dergi-body md:pl-10 text-justify leading-relaxed">
               {section.content}
             </p>
           </div>
