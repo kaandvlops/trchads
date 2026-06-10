@@ -10,7 +10,6 @@ import { useAuth } from "@/hooks/useAuth";
 import CharacterVotePanel from "@/components/Characters/CharacterVotePanel";
 import EstetikPano from "@/components/unluler/EstetikPano"; 
 import CharacterProfileCard from "@/components/Characters/CharacterProfileCard"; 
-// YENİ: Jenerik Yorum Sistemini içeri aktardık
 import GenericCommentSection from "@/components/GenericCommentSection";
 
 interface CharacterVoteScores {
@@ -25,7 +24,9 @@ interface CharacterVoteScores {
 // 1. BUSINESS LOGIC HOOK'U
 function useCharacterManager(characterId: string) {
   const router = useRouter();
-  const { user, profile: currentUserProfile, authLoading } = useAuth();
+  
+  // DÜZELTME BURADA: AuthProvider'da tanımlı olan "loading" değişkenini çekiyoruz
+  const { user, profile: currentUserProfile, loading } = useAuth();
   
   const [character, setCharacter] = useState<any | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
@@ -167,8 +168,9 @@ function useCharacterManager(characterId: string) {
     }
   };
 
+  // DÜZELTME BURADA: Dışarıya "loading" olarak gönderiyoruz
   return { 
-    user, currentUserProfile, authLoading, dataLoading, 
+    user, currentUserProfile, loading, dataLoading, 
     character, voteData, isUploadingImage, 
     fetchCharacterData, handleImageUpload, handleUrlUpdate, handleImageDelete, handleDeleteCharacter 
   };
@@ -179,13 +181,15 @@ export default function KarakterDetaySayfasi() {
   const params = useParams();
   const characterId = params.id as string;
 
+  // DÜZELTME BURADA: Dışarıdan "loading" olarak karşılıyoruz
   const { 
-    user, currentUserProfile, authLoading, dataLoading, 
+    user, currentUserProfile, loading, dataLoading, 
     character, voteData, isUploadingImage, 
     fetchCharacterData, handleImageUpload, handleUrlUpdate, handleImageDelete, handleDeleteCharacter 
   } = useCharacterManager(characterId);
 
-  if (authLoading || dataLoading) return <Loader />;
+  // DÜZELTME BURADA: Yüklenme durumunu "loading" değişkeniyle kontrol ediyoruz
+  if (loading || dataLoading) return <Loader />;
   if (!character) return <div className="w-full min-h-[50vh] flex items-center justify-center dergi-kicker">Kayıt Bulunamadı.</div>;
 
   const isAdmin = !!currentUserProfile?.is_admin;
@@ -228,7 +232,7 @@ export default function KarakterDetaySayfasi() {
 
         </div>
 
-        {/* YENİ: Jenerik Yorum Sistemi Entegrasyonu */}
+        {/* Jenerik Yorum Sistemi Entegrasyonu */}
         <GenericCommentSection 
           tableName="character_comments" 
           targetColumn="character_id" 
