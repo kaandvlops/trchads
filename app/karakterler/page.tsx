@@ -6,7 +6,6 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import Loader from "@/components/ui/Loader";
 import PageHeader from "@/components/ui/PageHeader";
-// İleride GameArena'nın adını CharacterArena yaparsın
 import CharacterArena from "@/components/Characters/CharacterArena"; 
 
 export default function KarakterlerSayfasi() {
@@ -18,7 +17,6 @@ export default function KarakterlerSayfasi() {
   useEffect(() => {
     const fetchCharacters = async () => {
       try {
-        // SQL ile ranked_characters view'ı oluşturacağız
         const { data, error } = await supabase
           .from("ranked_characters")
           .select("*")
@@ -57,7 +55,7 @@ export default function KarakterlerSayfasi() {
       <CharacterArena 
         isOpen={isArenaOpen} 
         onClose={() => setIsArenaOpen(false)} 
-        allGames={characters} // Arena props'larını da güncellemeyi unutma
+        allGames={characters} 
       />
 
       <PageHeader 

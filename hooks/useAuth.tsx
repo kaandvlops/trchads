@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/types";
@@ -19,44 +19,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // OPTİMİZASYON: Aynı anda birden fazla kez fetch yapılmasını engellemek için
+  const isFetchingRef = useRef(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     const { data } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .maybeSingle();
 
-    if (data) {
-      setProfile(data as UserProfile);
-    } else {
-      setProfile(null);
-    }
+    setProfile(data ? (data as UserProfile) : null);
+    isFetchingRef.current = false;
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+
     const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
-      setUser(session?.user || null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+      if (mounted) {
+        setUser(session?.user || null);
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        }
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user || null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
+      const currentUser = session?.user || null;
+      setUser(currentUser);
+      
+      // Sadece oturum açıldığında veya kullanıcı değiştiğinde profili çek
+      if (event === 'SIGNED_IN' && currentUser) {
+        await fetchProfile(currentUser.id);
+      } else if (event === 'SIGNED_OUT') {
         setProfile(null);
       }
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [fetchProfile]);

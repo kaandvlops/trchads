@@ -3,6 +3,17 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
+// XSS ve Güvenlik için URL Doğrulama Yardımcısı
+const isValidUrl = (string: string) => {
+  if (!string) return true;
+  try {
+    const url = new URL(string);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (_) {
+    return false;
+  }
+};
+
 export default function AddCharacterTab() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -17,7 +28,6 @@ export default function AddCharacterTab() {
   const [galleryUrl2, setGalleryUrl2] = useState("");
   const [galleryUrl3, setGalleryUrl3] = useState("");
   
-  // PSL/Looksmax Karakter Parametreleri
   const [universe, setUniverse] = useState("");
   const [race, setRace] = useState("");
   const [role, setRole] = useState("");
@@ -35,6 +45,10 @@ export default function AddCharacterTab() {
     if (!imageFile && !imageUrl.trim()) {
       return setMessage({ text: "Lütfen karakterin ana profil fotoğrafı için dosya yükleyin veya link girin.", type: "error" });
     }
+
+    if (!isValidUrl(imageUrl) || !isValidUrl(galleryUrl1) || !isValidUrl(galleryUrl2) || !isValidUrl(galleryUrl3)) {
+      return setMessage({ text: "Girdiğiniz bağlantılar geçersiz. Sadece 'http://' veya 'https://' ile başlayan geçerli bir URL girin.", type: "error" });
+    }
     
     setIsSubmitting(true);
     setMessage({ text: "", type: "" });
@@ -44,10 +58,11 @@ export default function AddCharacterTab() {
       const resolveImage = async (file: File | null, url: string) => {
         if (file) {
           const fileExt = file.name.split('.').pop();
-          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-          // DİKKAT: Supabase Storage'da 'characters' adında bir bucket oluşturmalısın
+          const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
+          
           const { error } = await supabase.storage.from('characters').upload(fileName, file); 
           if (error) throw error;
+          
           uploadedFileNames.push(fileName); 
           const { data: { publicUrl } } = supabase.storage.from('characters').getPublicUrl(fileName);
           return publicUrl;
@@ -62,7 +77,6 @@ export default function AddCharacterTab() {
         resolveImage(galleryFile3, galleryUrl3)
       ]);
       
-      // DİKKAT: Veritabanında tablonun adı 'characters' olmalı
       const { error: dbError } = await supabase.from("characters").insert([{ 
         name, 
         image_url: mainImageRes, 

@@ -24,8 +24,16 @@ export default function CharacterProfileCard({
   onImageDelete,
   isUploading 
 }: CharacterProfileCardProps) {
-  // Karakterin 6 PSL metrik ortalamasını hesaplıyoruz
-  const averageScore = ((character.avg_jawline + character.avg_eyes + character.avg_midface + character.avg_harmony + character.avg_dimorphism + character.avg_grooming) / 6 || 0).toFixed(1);
+  
+  // Güvenli skor hesaplaması (null/undefined hatalarını önler)
+  const averageScore = ((
+    (character?.avg_jawline || 0) + 
+    (character?.avg_eyes || 0) + 
+    (character?.avg_midface || 0) + 
+    (character?.avg_harmony || 0) + 
+    (character?.avg_dimorphism || 0) + 
+    (character?.avg_grooming || 0)
+  ) / 6 || 0).toFixed(1);
 
   const [link, setLink] = useState("");
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -36,11 +44,12 @@ export default function CharacterProfileCard({
       <ReportContentModal 
         isOpen={isReportModalOpen} 
         onClose={() => setIsReportModalOpen(false)} 
-        targetName={character.name} 
+        targetName={character?.name} 
       />
       
       <div className="flex items-center justify-between mb-6 border-b dergi-border pb-4">
-        <Link href="/oyunlar" className="dergi-kicker text-indigo-400/80 hover:text-indigo-300 transition-colors mb-0">
+        {/* HATA DÜZELTİLDİ: /oyunlar yerine /karakterler */}
+        <Link href="/karakterler" className="dergi-kicker text-indigo-400/80 hover:text-indigo-300 transition-colors mb-0">
           ← Karakter Arşivine Dön
         </Link>
         {isAdmin && (
@@ -52,7 +61,7 @@ export default function CharacterProfileCard({
 
       <div className="relative w-full aspect-[4/5] overflow-hidden border border-white/10 bg-black group mb-2">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10" />
-        {character.image_url ? (
+        {character?.image_url ? (
            <Image 
             src={character.image_url} alt={character.name} fill sizes="(max-width: 1024px) 100vw, 50vw"
             className={`object-cover object-top transition-all duration-1000 scale-105 group-hover:scale-100 grayscale-[20%] ${isUploading ? 'opacity-50 blur-sm' : ''}`} 
@@ -63,7 +72,7 @@ export default function CharacterProfileCard({
         
         <div className="absolute top-5 left-5 z-20">
           <span className="dergi-kicker bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 shadow-xl mb-0 text-white/70">
-            ID: {character.id.substring(0, 8)}
+            ID: {character?.id?.substring(0, 8)}
           </span>
         </div>
 
@@ -99,7 +108,7 @@ export default function CharacterProfileCard({
             </button>
           </div>
 
-          {character.image_url && (
+          {character?.image_url && (
             <button 
               onClick={() => onImageDelete?.('image_url')} disabled={isUploading}
               className="text-[10px] uppercase font-mono text-red-500/60 hover:text-red-400 text-left mt-2 transition-colors w-fit"
@@ -112,7 +121,7 @@ export default function CharacterProfileCard({
 
       <div className="flex items-end justify-between mt-4 mb-8 border-b dergi-border pb-8">
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-extralight text-white tracking-widest uppercase truncate pr-4">
-          {character.name}
+          {character?.name}
         </h1>
         <div className="flex flex-col items-end shrink-0">
           <span className="dergi-kicker mb-2 text-indigo-400">Genel PSL Skoru</span>
@@ -123,22 +132,22 @@ export default function CharacterProfileCard({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10 border-b dergi-border pb-8">
         <div className="flex flex-col gap-2 border-l border-indigo-500/30 pl-4">
           <span className="dergi-kicker mb-0">Evren / Oyun</span>
-          <span className="text-sm font-light text-white uppercase tracking-widest truncate" title={character.universe || "Bilinmiyor"}>{character.universe || "Bilinmiyor"}</span>
+          <span className="text-sm font-light text-white uppercase tracking-widest truncate" title={character?.universe || "Bilinmiyor"}>{character?.universe || "Bilinmiyor"}</span>
         </div>
         <div className="flex flex-col gap-2 border-l border-indigo-500/30 pl-4">
           <span className="dergi-kicker mb-0">Irk / Fenotip</span>
-          <span className="text-sm font-light text-white uppercase tracking-widest truncate">{character.race || "Bilinmiyor"}</span>
+          <span className="text-sm font-light text-white uppercase tracking-widest truncate">{character?.race || "Bilinmiyor"}</span>
         </div>
         <div className="flex flex-col gap-2 border-l border-indigo-500/30 pl-4">
           <span className="dergi-kicker mb-0">Rol / Sınıf</span>
-          <span className="text-sm font-light text-white uppercase tracking-widest truncate" title={character.role || "Bilinmiyor"}>{character.role || "-"}</span>
+          <span className="text-sm font-light text-white uppercase tracking-widest truncate" title={character?.role || "Bilinmiyor"}>{character?.role || "-"}</span>
         </div>
       </div>
 
       <div className="flex flex-col w-full">
         <h3 className="dergi-kicker mb-6">Fiziksel Analiz & Lore</h3>
         <div className="dergi-body whitespace-pre-wrap">
-          {character.description || "Bu karakterin yüz hatları için henüz bir analiz girilmemiş."}
+          {character?.description || "Bu karakterin yüz hatları için henüz bir analiz girilmemiş."}
         </div>
       </div>
       

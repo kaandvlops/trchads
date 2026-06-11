@@ -1,5 +1,5 @@
 // ============================================================================
-// SPAM, KÜFÜR VE GÜVENLİK FİLTRESİ (PINTEREST KISA LİNK DESTEKLİ SÜRÜM)
+// SPAM, KÜFÜR VE GÜVENLİK FİLTRESİ (GELİŞMİŞ TÜRKÇE & REDOS KORUMALI)
 // ============================================================================
 
 const MAX_MESSAGE_LENGTH = 5000;
@@ -10,29 +10,30 @@ const LEET_MAP: Record<string, string> = {
   'b': '[b8]', 't': '[t7]'
 };
 
-// SADECE SPAM İÇİN: Leetspeak toleranslı regex builder
+// YAMA: ReDoS (Regex çökertme) saldırılarına karşı sınır {0,3} olarak belirlendi.
+// Ayrıca /i bayrağı kaldırıldı, tüm kelimeler saf küçük harf (tr-TR) ile test edilecek.
 const buildSpamRegex = (words: string[]) => {
   const patterns = words.map(word => {
-    return word.split('').map(char => LEET_MAP[char] || char).join('[\\s\\W_]*');
+    return word.split('').map(char => LEET_MAP[char] || char).join('[\\s\\W_]{0,3}');
   });
-  return new RegExp(`(?:^|[\\s.,!?_\\-])(?:${patterns.join('|')})(?=[\\s.,!?_\\-]|$)`, 'i');
+  return new RegExp(`(?:^|[\\s.,!?_\\-])(?:${patterns.join('|')})(?=[\\s.,!?_\\-]|$)`);
 };
 
-// KÜFÜR İÇİN: Tam kelime sınırı ile çalışan, substring yakalamayan builder
-const buildSwearRegex = (words: string[]) => {
+// YAMA: Türkçe sondan eklemeli olduğu için \b (kelime sınırı) kaldırıldı.
+// 'exact' parametresi ile tam eşleşme veya ek (suffix) kabul etme özelliği eklendi.
+const buildSwearRegex = (words: string[], exact: boolean = false) => {
   const patterns = words.map(word => {
-    // Her karakter için leetspeak alternatifleri + isteğe bağlı ayırıcılar
     const charPattern = word.split('').map(char => {
       const mapped = LEET_MAP[char] || char;
       return mapped.replace(/\[|\]/g, '').split('').join('');
-    }).join('[\\s\\W_]*');
+    }).join('[\\s\\W_]{0,2}');
     return charPattern;
   });
-  // \b kelime sınırı kullanarak substring eşleşmeyi engelle
-  return new RegExp(`\\b(?:${patterns.join('|')})\\b`, 'i');
+  
+  const endBoundary = exact ? `(?=[\\s.,!?_\\-]|$)` : ``;
+  return new RegExp(`(?:^|[\\s.,!?_\\-])(?:${patterns.join('|')})${endBoundary}`);
 };
 
-// SPAM KELİMELERİ (Leetspeak toleranslı, substring'e izin verilebilir)
 const BAN_ROOT_REGEX = buildSpamRegex([
   "casino", "bet", "bahis", "slot", "rulet", "bonus", "kumar", 
   "deneme bonusu", "freespin", "çevrimsiz", "iddaa", "illegal",
@@ -43,9 +44,8 @@ const BAN_ROOT_REGEX = buildSpamRegex([
   "jigolo", "şugardadi", "sugar daddy", "onlyfans"
 ]);
 
-const STRICT_PHRASE_REGEX = /(denemebonusu|vipbahis|kaçakmaç|ccsatışı|çalıntıkart|şifrekırma|kolaypara|garantigelir|evdençalışkazan)/i;
+const STRICT_PHRASE_REGEX = /(denemebonusu|vipbahis|kaçakmaç|ccsatışı|çalıntıkart|şifrekırma|kolaypara|garantigelir|evdençalışkazan)/;
 
-// KÜFÜR KELİMELERİ (Tam kelime sınırı, substring yok)
 const SWEAR_WORDS = [
   "amk", "aq", "mk", "mq", "amq", "amg", "sik", "siktir",
   "sikik", "sikeyim", "sokarım", "sokam", "oç",
@@ -57,22 +57,23 @@ const SWEAR_WORDS = [
 ];
 
 const EXACT_SWEAR_WORDS = [
-  "mal", "seks", "oç", "oc", "amk", "aq", "mk"
+  "mal", "seks", "oç", "oc"
 ];
 
-const SWEAR_ROOT_REGEX = buildSwearRegex(SWEAR_WORDS);
-const EXACT_SWEAR_REGEX = buildSwearRegex(EXACT_SWEAR_WORDS);
+// exact=false: kelime sonuna ek gelebilir (örn: amk'ya, piçler)
+const SWEAR_ROOT_REGEX = buildSwearRegex(SWEAR_WORDS, false);
+// exact=true: sadece kendisi (örn: "normal" kelimesini yakalamamak için "mal" kelimesini daraltır)
+const EXACT_SWEAR_REGEX = buildSwearRegex(EXACT_SWEAR_WORDS, true);
 
-const MOD_QUEUE_REGEX = /\b(forex|hack|kripto sinyal|iptv|sanal seks|sugar daddy|hitler|nazizm|satılık|ucuz|kampanya)\b/i;
-
-const SOCIAL_AD_REGEX = /(discord\s*(?:gg|app|com))|(t\s*me)|(wa\s*me)|(telegram\s*(?:kanal|grup|gel))|(linktr\.ee)/i;
+const MOD_QUEUE_REGEX = /\b(forex|hack|kripto sinyal|iptv|sanal seks|sugar daddy|hitler|nazizm|satılık|ucuz|kampanya)\b/;
+const SOCIAL_AD_REGEX = /(discord\s*(?:gg|app|com))|(t\s*me)|(wa\s*me)|(telegram\s*(?:kanal|grup|gel))|(linktr\.ee)/;
 
 const SYSTEM_REGEX = {
   IP: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/,
   EMAIL: /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/,
   PHONE: /(?<!\d)(?:\+90|0)?\s*\(?5\d{2}\)?[\s\-.]*\d{3}[\s\-.]*\d{2}[\s\-.]*\d{2}(?!\d)/,
   FLOOD: /(.{1,4})\1{10,}/,
-  GENERAL_LINK: /(?:https?:\/\/[\w-]+)|(?:www\.[\w-]+)|(?:[a-zA-Z0-9-]+\.(?:com|net|org|tr|io|gg|me|co))\b/i
+  GENERAL_LINK: /(?:https?:\/\/[\w-]+)|(?:www\.[\w-]+)|(?:[a-zA-Z0-9-]+\.(?:com|net|org|tr|io|gg|me|co))\b/
 };
 
 export type SpamResult = {
@@ -96,6 +97,7 @@ export function detectSpam(rawText: string): SpamResult {
     return { isClean: false, action: "mod_queue", reason: "Kişisel veri tespiti. Moderatör onayı bekleniyor." };
   }
 
+  // YAMA: Türkçe karakter duyarlı şekilde tamamen küçük harfe çevirme (I/İ sorunu ortadan kalktı)
   let normalizedText = singleLineText.toLocaleLowerCase("tr-TR");
   normalizedText = normalizedText.replace(/(.)\1{2,}/g, '$1$1');
   normalizedText = normalizedText.replace(/[\u200B-\u200D\uFEFF]/g, "");
@@ -105,12 +107,10 @@ export function detectSpam(rawText: string): SpamResult {
 
   const noSpaceText = normalizedText.replace(/[\s_]+/g, "");
 
-  // SPAM KONTROLÜ (substring'e toleranslı)
   if (BAN_ROOT_REGEX.test(normalizedText) || STRICT_PHRASE_REGEX.test(noSpaceText)) {
     return { isClean: false, action: "ban", reason: "İllegal, Yetişkin İçerik veya Dolandırıcılık tespiti." };
   }
 
-  // KÜFÜR KONTROLÜ (tam kelime sınırı, substring yok)
   if (SWEAR_ROOT_REGEX.test(normalizedText) || EXACT_SWEAR_REGEX.test(normalizedText)) {
     return { isClean: false, action: "reject", reason: "Topluluk kurallarına aykırı dil tespiti." };
   }
@@ -119,10 +119,11 @@ export function detectSpam(rawText: string): SpamResult {
     return { isClean: false, action: "mod_queue", reason: "Hassas içerik veya reklam potansiyeli." };
   }
 
-  if (SYSTEM_REGEX.GENERAL_LINK.test(singleLineText)) {
-    const SAFE_MEDIA_REGEX = /https?:\/\/(?:www\.)?tiktok\.com\/@[\w.-]+\/video\/\d+(?:\?[^\s]*)?|https?:\/\/\S+\.gif|https?:\/\/(?:www\.|[a-z]{2}\.)?pinterest\.com\/pin\/\d+\/?|https?:\/\/pin\.it\/[a-zA-Z0-9]+/gi;
+  // Safe Link Test (Yedek olarak küçük harfli versiyonda yapıldı)
+  if (SYSTEM_REGEX.GENERAL_LINK.test(normalizedText)) {
+    const SAFE_MEDIA_REGEX = /https?:\/\/(?:www\.)?tiktok\.com\/@[\w.-]+\/video\/\d+(?:\?[^\s]*)?|https?:\/\/\S+\.gif|https?:\/\/(?:www\.|[a-z]{2}\.)?pinterest\.com\/pin\/\d+\/?|https?:\/\/pin\.it\/[a-zA-Z0-9]+/g;
     
-    const mediaMatches = singleLineText.match(SAFE_MEDIA_REGEX);
+    const mediaMatches = normalizedText.match(SAFE_MEDIA_REGEX);
     if (mediaMatches && mediaMatches.length > 1) {
       return { 
         isClean: false, 
@@ -131,7 +132,7 @@ export function detectSpam(rawText: string): SpamResult {
       };
     }
 
-    const textWithoutSafeLinks = singleLineText.replace(SAFE_MEDIA_REGEX, '');
+    const textWithoutSafeLinks = normalizedText.replace(SAFE_MEDIA_REGEX, '');
     
     if (SYSTEM_REGEX.GENERAL_LINK.test(textWithoutSafeLinks)) {
       return { isClean: false, action: "mod_queue", reason: "Bağlantı içeriyor. Yalnızca 1 adet güvenli medya otomatik onaylanır." };

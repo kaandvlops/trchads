@@ -24,7 +24,6 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Token geçerliliğini doğrulayan güvenli çağrı
   const { data: { user } } = await supabase.auth.getUser()
 
   const isProfileRoute = request.nextUrl.pathname.startsWith('/profil')
@@ -35,16 +34,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // 2. KONTROL: Gerçek Admin Kalkanı (Defense in Depth)
+  // 2. KONTROL: Admin Kalkanı
   if (user && isAdminRoute) {
-    // ÇÖZÜM: Yanlış cebe (metadata) bakmak yerine, doğrudan veritabanındaki (profiles) gerçek is_admin değerini sorguluyoruz.
+    // NOT: İleride performansı daha da artırmak için 'user.app_metadata.is_admin' 
+    // kullanacak şekilde Supabase Custom Claims ayarlamanı tavsiye ederim.
     const { data: profile } = await supabase
       .from('profiles')
       .select('is_admin')
       .eq('id', user.id)
       .single()
 
-    // Eğer veritabanı bu kişinin admin olmadığını söylerse veya kayıt bulamazsa, o zaman anasayfaya at.
     if (!profile?.is_admin) {
       return NextResponse.redirect(new URL('/', request.url))
     }

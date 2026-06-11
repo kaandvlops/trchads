@@ -3,17 +3,26 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
+// XSS ve Güvenlik için URL Doğrulama Yardımcısı
+const isValidUrl = (string: string) => {
+  if (!string) return true; // Boş bırakılabilir
+  try {
+    const url = new URL(string);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (_) {
+    return false;
+  }
+};
+
 export default function AddCelebTab() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   
-  // FOTOĞRAF ALANLARI (Dosya Yükleme)
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [galleryFile1, setGalleryFile1] = useState<File | null>(null); 
   const [galleryFile2, setGalleryFile2] = useState<File | null>(null); 
   const [galleryFile3, setGalleryFile3] = useState<File | null>(null); 
 
-  // YENİ: TELİF KORUMASI İÇİN LİNK (URL) ALANLARI
   const [imageUrl, setImageUrl] = useState("");
   const [galleryUrl1, setGalleryUrl1] = useState("");
   const [galleryUrl2, setGalleryUrl2] = useState("");
@@ -35,22 +44,26 @@ export default function AddCelebTab() {
   const handleAddCeleb = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Ana kapak için en azından biri (Dosya veya Link) olmak zorunda
     if (!imageFile && !imageUrl.trim()) {
       return setMessage({ text: "Lütfen ana kapak resmi için dosya yükleyin veya link girin.", type: "error" });
+    }
+
+    // Güvenlik: Kullanıcının girdiği bağlantıların geçerli ve güvenli (HTTP/HTTPS) olup olmadığını kontrol et
+    if (!isValidUrl(imageUrl) || !isValidUrl(galleryUrl1) || !isValidUrl(galleryUrl2) || !isValidUrl(galleryUrl3)) {
+      return setMessage({ text: "Girdiğiniz bağlantılar geçersiz. Sadece 'http://' veya 'https://' ile başlayan geçerli bir URL girin.", type: "error" });
     }
     
     setIsSubmitting(true);
     setMessage({ text: "", type: "" });
 
-    const uploadedFileNames: string[] = []; // Rollback (Hata durumunda silme) için liste
+    const uploadedFileNames: string[] = []; 
 
     try {
-      // 1. Akıllı Yükleme Fonksiyonu (Dosya varsa yükler, Link varsa linki döndürür)
       const resolveImage = async (file: File | null, url: string) => {
         if (file) {
           const fileExt = file.name.split('.').pop();
-          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+          // Çakışma riskini sıfırlayan modern UUID kullanımı
+          const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
           
           const { error } = await supabase.storage.from('celebrities').upload(fileName, file);
           if (error) throw error;
@@ -63,7 +76,6 @@ export default function AddCelebTab() {
         return url.trim() || null;
       };
 
-      // 2. PARALEL YÜKLEME (Promise.all ile 4 kat hız artışı!)
       const [mainImageRes, g1Res, g2Res, g3Res] = await Promise.all([
         resolveImage(imageFile, imageUrl),
         resolveImage(galleryFile1, galleryUrl1),
@@ -71,7 +83,6 @@ export default function AddCelebTab() {
         resolveImage(galleryFile3, galleryUrl3)
       ]);
       
-      // 3. Veritabanına Kaydet
       const { error: dbError } = await supabase.from("celebrities").insert([{ 
         name, 
         image_url: mainImageRes, 
@@ -89,7 +100,6 @@ export default function AddCelebTab() {
 
       setMessage({ text: "Profil ve Dergi Panosu başarıyla sisteme işlendi!", type: "success" });
       
-      // Formu tamamen temizle
       setName(""); setDescription(""); setCountry(""); setBirthYear(""); setHeight(""); setWeight("");
       setImageFile(null); setGalleryFile1(null); setGalleryFile2(null); setGalleryFile3(null);
       setImageUrl(""); setGalleryUrl1(""); setGalleryUrl2(""); setGalleryUrl3("");
@@ -100,7 +110,6 @@ export default function AddCelebTab() {
       if (gallery3Ref.current) gallery3Ref.current.value = '';
 
     } catch (error: unknown) {
-      // Hata durumunda sadece Supabase Storage'a gerçekten yüklenen "dosyaları" sil (Rollback)
       if (uploadedFileNames.length > 0) {
         await supabase.storage.from('celebrities').remove(uploadedFileNames);
       }
@@ -128,7 +137,6 @@ export default function AddCelebTab() {
           <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
         </div>
 
-        {/* 1. ANA KAPAK (Dosya veya Link) */}
         <div className="flex flex-col gap-3 border-l-2 border-yellow-500/50 pl-4">
           <label className="dergi-kicker mb-0 text-yellow-500/80">1. Profil Fotoğrafı (Ana Kapak / Vesikalık)</label>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={(e) => { if (e.target.files) setImageFile(e.target.files[0]); }} className={fileClass} />
@@ -138,14 +146,12 @@ export default function AddCelebTab() {
           </div>
         </div>
 
-        {/* ESTETİK PANO */}
         <div className="border border-white/5 bg-black/40 p-6 flex flex-col gap-8">
           <div className="border-b dergi-border pb-4">
             <h3 className="dergi-kicker text-white/60 mb-1">Estetik Pano (Dergi Konsepti)</h3>
             <p className="text-[10px] text-white/30 font-light">Sunucu kotası için dosyaları indirmek yerine Pinterest linklerini yapıştırabilirsiniz.</p>
           </div>
           
-          {/* G1 */}
           <div className="flex flex-col gap-3">
             <label className="dergi-kicker mb-0">2. Yatay (Landscape) Ortam Karesi</label>
             <input ref={gallery1Ref} type="file" accept="image/*" onChange={(e) => { if (e.target.files) setGalleryFile1(e.target.files[0]); }} className={fileClass} />
@@ -155,7 +161,6 @@ export default function AddCelebTab() {
             </div>
           </div>
 
-          {/* G2 */}
           <div className="flex flex-col gap-3">
             <label className="dergi-kicker mb-0">3. Dikey (Portrait) Detay Karesi 1</label>
             <input ref={gallery2Ref} type="file" accept="image/*" onChange={(e) => { if (e.target.files) setGalleryFile2(e.target.files[0]); }} className={fileClass} />
@@ -165,7 +170,6 @@ export default function AddCelebTab() {
             </div>
           </div>
 
-          {/* G3 */}
           <div className="flex flex-col gap-3">
             <label className="dergi-kicker mb-0">4. Dikey (Portrait) Detay Karesi 2</label>
             <input ref={gallery3Ref} type="file" accept="image/*" onChange={(e) => { if (e.target.files) setGalleryFile3(e.target.files[0]); }} className={fileClass} />

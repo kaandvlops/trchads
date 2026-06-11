@@ -38,26 +38,20 @@ export default function AdminPaneli() {
   const [userToPunish, setUserToPunish] = useState<{ id: string, name: string, reportId: string } | null>(null);
 
   useEffect(() => {
-    // 1. ZIRH: Eğer auth sistemi hala yükleniyorsa hiçbir şey yapma, bekle.
     if (authLoading) return;
 
-    // 2. ZIRH: Kullanıcı hiç giriş yapmamışsa anasayfaya şutla.
     if (!user) {
       router.push("/");
       return;
     }
 
-    // 3. ZIRH (Kritik Nokta!): Kullanıcı var ama profil verisi (is_admin) henüz gelmediyse bekle!
-    // İşte seni anasayfaya atan hata buydu. Profil gelmeden karar veriyordu.
     if (user && !profile) return;
 
-    // 4. ZIRH: Profil geldi ve is_admin false ise anasayfaya şutla.
     if (profile && !profile.is_admin) {
       router.push("/");
       return;
     }
 
-    // BÜTÜN ZIRHLARI GEÇTİYSE ADMİN OLDUĞU %100 KESİNLEŞMİŞTİR. VERİLERİ ÇEK:
     const fetchAdminData = async () => {
       try {
         const { data: warnData, error: warnError } = await supabase
@@ -80,20 +74,19 @@ export default function AdminPaneli() {
           setWarnings(safeWarnings);
         }
 
-          // 2. Şikayetler Sorgusu (Karakter yorumları dahil edildi)
-          const { data: repData, error: repError } = await supabase
-            .from("user_reports")
-            .select(`
-              *, 
-              reporter:profiles!reporter_id(full_name), 
-              reported_user:profiles!reported_user_id(full_name), 
-              topic:forum_topics!topic_id(id, title, content), 
-              forum_comment:forum_comments!forum_comment_id(id, content, topic_id), 
-              celeb_comment:celebrity_comments!celeb_comment_id(id, content, celebrity_id),
-              character_comment:character_comments!character_comment_id(id, content, character_id)
-            `)
-            .eq("status", "pending")
-            .order("created_at", { ascending: false });
+        const { data: repData, error: repError } = await supabase
+          .from("user_reports")
+          .select(`
+            *, 
+            reporter:profiles!reporter_id(full_name), 
+            reported_user:profiles!reported_user_id(full_name), 
+            topic:forum_topics!topic_id(id, title, content), 
+            forum_comment:forum_comments!forum_comment_id(id, content, topic_id), 
+            celeb_comment:celebrity_comments!celeb_comment_id(id, content, celebrity_id),
+            character_comment:character_comments!character_comment_id(id, content, character_id)
+          `)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false });
 
         if (repError) throw new Error(`Şikayet Tablosu Hatası: ${repError.message}`);
 
@@ -104,7 +97,6 @@ export default function AdminPaneli() {
       } catch (err: any) {
         setDbError(err.message);
       } finally {
-        // Tüm işlemler bittikten sonra yükleme ekranını kaldır
         setDataLoading(false);
       }
     };
@@ -116,6 +108,10 @@ export default function AdminPaneli() {
     if (!userToPunish || !user?.id) return;
 
     try {
+      const parsedBanDays = parseInt(banDuration, 10);
+      const finalBanDays = parsedBanDays === 999 ? 36500 : parsedBanDays; // 100 yıl = Kalıcı
+      
+      // 1. Sabıka Kaydı Ekleme
       const { data: insertedWarn, error: warnError } = await supabase.from("user_warnings").insert([{
         user_id: userToPunish.id,
         admin_id: user.id,
@@ -124,32 +120,34 @@ export default function AdminPaneli() {
 
       if (warnError) throw new Error("Sabıka kaydı yazılamadı: " + warnError.message);
 
-      let newBannedUntil = null;
-      const parsedBanDays = parseInt(banDuration, 10);
-
-      if (parsedBanDays !== 0) {
-        const banDate = new Date();
-        if (parsedBanDays === 999) banDate.setFullYear(banDate.getFullYear() + 100); 
-        else banDate.setDate(banDate.getDate() + parsedBanDays); 
-        newBannedUntil = banDate.toISOString();
-        
+      // 2. Ceza İşlemi (Güvenli DB hesaplaması için sadece günü gönderiyoruz)
+      if (finalBanDays > 0) {
         const { error: banError } = await supabase.rpc('admin_manage_ban', { 
             target_user_id: userToPunish.id, 
-            ban_days: parsedBanDays === 999 ? 36500 : parsedBanDays 
+            ban_days: finalBanDays 
         });
         
         if (banError) throw new Error("Kullanıcının ban süresi işlenemedi: " + banError.message);
       }
 
+      // 3. Şikayeti Kapat
       const { error: repError } = await supabase.from("user_reports").update({ status: "resolved" }).eq("id", userToPunish.reportId);
-      if (repError) throw new Error("Şikayet kapatılamadı.");
+      if (repError) throw new Error("Cezalandırma başarılı ancak şikayet kapatılamadı. Lütfen manuel kapatın.");
       
+      // UI State Güncellemesi (Sadece önyüzü anında güncellemek için tahmini tarih hesaplaması)
+      let uiBannedUntil = null;
+      if (finalBanDays > 0) {
+        const banDate = new Date();
+        banDate.setDate(banDate.getDate() + finalBanDays);
+        uiBannedUntil = banDate.toISOString();
+      }
+
       setReports(reports.filter(r => r.id !== userToPunish.reportId));
       
       if (insertedWarn) {
         const newWarningUI: UserWarning = {
           ...insertedWarn,
-          warned_user: { full_name: userToPunish.name, banned_until: newBannedUntil },
+          warned_user: { full_name: userToPunish.name, banned_until: uiBannedUntil },
           admin_user: { full_name: profile?.full_name || "Yönetici" }
         };
         setWarnings([newWarningUI, ...warnings]);

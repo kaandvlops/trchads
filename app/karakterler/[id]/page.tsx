@@ -3,70 +3,76 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
-import { Celebrity } from "@/types";
 
 import Loader from "@/components/ui/Loader";
 import { useAuth } from "@/hooks/useAuth"; 
 
-import CelebProfileCard from "@/components/unluler/CelebProfileCard";
-import VotePanel from "@/components/unluler/VotePanel";
+import CharacterProfileCard from "@/components/Characters/CharacterProfileCard";
+import CharacterVotePanel from "@/components/Characters/CharacterVotePanel";
 import EstetikPano from "@/components/unluler/EstetikPano"; 
-// YENİ: Eski yorum sistemi yerine Jenerik Yorum Sistemini içeri aktardık
 import GenericCommentSection from "@/components/GenericCommentSection";
 
-interface VoteScores {
-  appearance: number;
-  symmetry: number;
+// Karakter skorları (Celebrity'den farklı olabilir, ağaç yapına göre ayarladım)
+interface CharacterVoteScores {
   jawline: number;
   eyes: number;
-  style: number;
-  charisma: number;
+  midface: number;
+  harmony: number;
+  dimorphism: number;
+  grooming: number;
 }
 
 // ============================================================================
-// 1. BUSINESS LOGIC HOOK'U
+// 1. BUSINESS LOGIC HOOK'U (KARAKTERLERE ÖZEL)
 // ============================================================================
-function useCelebrityManager(celebrityId: string) {
+function useCharacterManager(characterId: string) {
   const router = useRouter();
-  // DÜZELTME: Büyük "Loading" yerine küçük "loading" yapıldı
   const { user, profile: currentUserProfile, loading } = useAuth();
   
-  const [celebrity, setCelebrity] = useState<Celebrity | null>(null);
+  const [character, setCharacter] = useState<any | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   
-  const [voteData, setVoteData] = useState<{ hasVoted: boolean; scores: VoteScores }>({
+  const [voteData, setVoteData] = useState<{ hasVoted: boolean; scores: CharacterVoteScores }>({
     hasVoted: false,
-    scores: { appearance: 5, symmetry: 5, jawline: 5, eyes: 5, style: 5, charisma: 5 }
+    scores: { jawline: 5, eyes: 5, midface: 5, harmony: 5, dimorphism: 5, grooming: 5 }
   });
 
-  const fetchCelebData = useCallback(async () => {
-    const { data } = await supabase.from("celebrities").select("*").eq("id", celebrityId).single();
-    if (data) setCelebrity(data as Celebrity);
-  }, [celebrityId]);
+  const fetchCharacterData = useCallback(async () => {
+    // ÇÖZÜM BURADA: celebrities yerine characters (veya ranked_characters) tablosundan çekiyoruz!
+    const { data } = await supabase.from("characters").select("*").eq("id", characterId).single();
+    if (data) setCharacter(data);
+  }, [characterId]);
 
   useEffect(() => {
-    fetchCelebData().then(() => setDataLoading(false));
-  }, [fetchCelebData]);
+    fetchCharacterData().then(() => setDataLoading(false));
+  }, [fetchCharacterData]);
 
   useEffect(() => {
     if (user) {
-      supabase.from("votes").select("*").eq("user_id", user.id).eq("celebrity_id", celebrityId).single()
+      // Karakter oyları için 'character_id' üzerinden arama yapıyoruz
+      supabase.from("votes").select("*").eq("user_id", user.id).eq("character_id", characterId).single()
         .then(({ data }) => {
           if (data) {
             setVoteData({
               hasVoted: true,
-              scores: { appearance: data.appearance, symmetry: data.symmetry, jawline: data.jawline, eyes: data.eyes, style: data.style, charisma: data.charisma }
+              scores: { 
+                jawline: data.jawline, 
+                eyes: data.eyes, 
+                midface: data.midface, 
+                harmony: data.harmony, 
+                dimorphism: data.dimorphism, 
+                grooming: data.grooming 
+              }
             });
           }
         });
     }
-  }, [user, celebrityId]);
+  }, [user, characterId]);
 
-  // DOSYA YÜKLEME
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'image_url' | 'gallery_1' | 'gallery_2' | 'gallery_3') => {
     const file = e.target.files?.[0];
-    if (!file || !currentUserProfile?.is_admin || !celebrity) return;
+    if (!file || !currentUserProfile?.is_admin || !character) return;
 
     if (!window.confirm("Bu fotoğrafı bilgisayardan yükleyerek değiştirmek istediğinize emin misiniz?")) {
       e.target.value = "";
@@ -76,23 +82,24 @@ function useCelebrityManager(celebrityId: string) {
     setIsUploadingImage(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage.from('celebrities').upload(fileName, file);
+      // ÇÖZÜM: 'characters' bucket'ına yüklüyoruz
+      const { error: uploadError } = await supabase.storage.from('characters').upload(fileName, file);
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl: newImageUrl } } = supabase.storage.from('celebrities').getPublicUrl(fileName);
+      const { data: { publicUrl: newImageUrl } } = supabase.storage.from('characters').getPublicUrl(fileName);
 
-      const { error: updateError } = await supabase.from('celebrities').update({ [fieldName]: newImageUrl }).eq('id', celebrityId);
+      const { error: updateError } = await supabase.from('characters').update({ [fieldName]: newImageUrl }).eq('id', characterId);
       if (updateError) throw updateError;
 
-      const oldUrl = celebrity[fieldName] as string | undefined;
+      const oldUrl = character[fieldName] as string | undefined;
       if (oldUrl && oldUrl.includes('supabase.co')) {
         const oldFileName = oldUrl.split('/').pop();
-        if (oldFileName) await supabase.storage.from('celebrities').remove([oldFileName]);
+        if (oldFileName) await supabase.storage.from('characters').remove([oldFileName]);
       }
 
-      await fetchCelebData();
+      await fetchCharacterData();
     } catch (err: unknown) {
       alert(err instanceof Error ? "Hata: " + err.message : "Beklenmeyen bir hata oluştu.");
     } finally {
@@ -101,21 +108,21 @@ function useCelebrityManager(celebrityId: string) {
   };
 
   const handleUrlUpdate = async (url: string, fieldName: 'image_url' | 'gallery_1' | 'gallery_2' | 'gallery_3') => {
-    if (!currentUserProfile?.is_admin || !celebrity) return;
+    if (!currentUserProfile?.is_admin || !character) return;
     if (!window.confirm("Bu alanı harici bir link ile değiştirmek istediğinize emin misiniz?")) return;
 
     setIsUploadingImage(true);
     try {
-      const { error } = await supabase.from('celebrities').update({ [fieldName]: url }).eq('id', celebrityId);
+      const { error } = await supabase.from('characters').update({ [fieldName]: url }).eq('id', characterId);
       if (error) throw error;
 
-      const oldUrl = celebrity[fieldName] as string | undefined;
+      const oldUrl = character[fieldName] as string | undefined;
       if (oldUrl && oldUrl.includes('supabase.co')) {
         const oldFileName = oldUrl.split('/').pop();
-        if (oldFileName) await supabase.storage.from('celebrities').remove([oldFileName]);
+        if (oldFileName) await supabase.storage.from('characters').remove([oldFileName]);
       }
 
-      await fetchCelebData();
+      await fetchCharacterData();
     } catch (err: unknown) {
       alert(err instanceof Error ? "Hata: " + err.message : "Beklenmeyen bir hata oluştu.");
     } finally {
@@ -124,21 +131,21 @@ function useCelebrityManager(celebrityId: string) {
   };
 
   const handleImageDelete = async (fieldName: 'image_url' | 'gallery_1' | 'gallery_2' | 'gallery_3') => {
-    if (!currentUserProfile?.is_admin || !celebrity) return;
+    if (!currentUserProfile?.is_admin || !character) return;
     if (!window.confirm("Bu fotoğrafı tamamen kaldırmak istediğinize emin misiniz?")) return;
 
     setIsUploadingImage(true);
     try {
-      const { error } = await supabase.from('celebrities').update({ [fieldName]: null }).eq('id', celebrityId);
+      const { error } = await supabase.from('characters').update({ [fieldName]: null }).eq('id', characterId);
       if (error) throw error;
 
-      const oldUrl = celebrity[fieldName] as string | undefined;
+      const oldUrl = character[fieldName] as string | undefined;
       if (oldUrl && oldUrl.includes('supabase.co')) {
         const oldFileName = oldUrl.split('/').pop();
-        if (oldFileName) await supabase.storage.from('celebrities').remove([oldFileName]);
+        if (oldFileName) await supabase.storage.from('characters').remove([oldFileName]);
       }
 
-      await fetchCelebData();
+      await fetchCharacterData();
     } catch (err: unknown) {
       alert(err instanceof Error ? "Hata: " + err.message : "Beklenmeyen bir hata oluştu.");
     } finally {
@@ -146,8 +153,8 @@ function useCelebrityManager(celebrityId: string) {
     }
   };
 
-  const handleDeleteCeleb = async () => {
-    if (!celebrity || !window.confirm("Profili silmek istediğinize emin misiniz?")) return;
+  const handleDeleteCharacter = async () => {
+    if (!character || !window.confirm("Karakteri silmek istediğinize emin misiniz?")) return;
     
     try {
       const filesToRemove: string[] = [];
@@ -155,47 +162,45 @@ function useCelebrityManager(celebrityId: string) {
         if (url && url.includes('supabase.co')) filesToRemove.push(url.split('/').pop()!);
       };
 
-      extractFile(celebrity.image_url);
-      extractFile(celebrity.gallery_1);
-      extractFile(celebrity.gallery_2);
-      extractFile(celebrity.gallery_3);
+      extractFile(character.image_url);
+      extractFile(character.gallery_1);
+      extractFile(character.gallery_2);
+      extractFile(character.gallery_3);
 
-      if (filesToRemove.length > 0) await supabase.storage.from('celebrities').remove(filesToRemove);
+      if (filesToRemove.length > 0) await supabase.storage.from('characters').remove(filesToRemove);
 
-      const { error } = await supabase.rpc('admin_delete_content', { content_type: 'celebrity', target_id: celebrityId });
+      // ÇÖZÜM: admin_delete_content rpc'sinde 'character' olarak iletiyoruz
+      const { error } = await supabase.rpc('admin_delete_content', { content_type: 'character', target_id: characterId });
       if (error) throw error;
       
-      router.push("/unluler");
+      router.push("/karakterler");
     } catch (err: unknown) {
       alert(err instanceof Error ? "Silme işlemi başarısız oldu: " + err.message : "Beklenmeyen bir hata oluştu.");
     }
   };
 
-  // DÜZELTME: Return objesinde küçük "loading" kullanıldı
   return { 
     user, currentUserProfile, loading, dataLoading, 
-    celebrity, voteData, isUploadingImage, 
-    fetchCelebData, handleImageUpload, handleUrlUpdate, handleImageDelete, handleDeleteCeleb 
+    character, voteData, isUploadingImage, 
+    fetchCharacterData, handleImageUpload, handleUrlUpdate, handleImageDelete, handleDeleteCharacter 
   };
 }
 
 // ============================================================================
 // 2. ANA GÖVDE (UI)
 // ============================================================================
-export default function UnluDetaySayfasi() {
+export default function KarakterDetaySayfasi() {
   const params = useParams();
-  const celebrityId = params.id as string;
+  const characterId = params.id as string;
 
-  // DÜZELTME: Karşılanırken küçük "loading" yapıldı
   const { 
     user, currentUserProfile, loading, dataLoading, 
-    celebrity, voteData, isUploadingImage, 
-    fetchCelebData, handleImageUpload, handleUrlUpdate, handleImageDelete, handleDeleteCeleb 
-  } = useCelebrityManager(celebrityId);
+    character, voteData, isUploadingImage, 
+    fetchCharacterData, handleImageUpload, handleUrlUpdate, handleImageDelete, handleDeleteCharacter 
+  } = useCharacterManager(characterId);
 
-  // DÜZELTME: Loader kontrolünde küçük "loading" kullanıldı
-  if (loading || dataLoading) return <Loader />;
-  if (!celebrity) return <div className="w-full min-h-[50vh] flex items-center justify-center dergi-kicker">Kayıt Bulunamadı.</div>;
+  if (loading || dataLoading) return <Loader text="Karakter Verileri Çekiliyor..." />;
+  if (!character) return <div className="w-full min-h-[50vh] flex items-center justify-center dergi-kicker">Kayıt Bulunamadı.</div>;
 
   const isAdmin = !!currentUserProfile?.is_admin;
 
@@ -207,10 +212,10 @@ export default function UnluDetaySayfasi() {
           
           {/* SOL SÜTUN */}
           <div className="w-full lg:w-[55%] xl:w-[60%] flex flex-col">
-            <CelebProfileCard 
-              celebrity={celebrity} 
+            <CharacterProfileCard 
+              character={character} 
               isAdmin={isAdmin} 
-              onDeleteCeleb={handleDeleteCeleb} 
+              onDeleteCharacter={handleDeleteCharacter} 
               onImageUpload={handleImageUpload}
               onUrlUpdate={handleUrlUpdate}
               onImageDelete={handleImageDelete}
@@ -220,15 +225,16 @@ export default function UnluDetaySayfasi() {
 
           {/* SAĞ SÜTUN */}
           <div className="w-full lg:w-[45%] xl:w-[40%] flex flex-col gap-12">
-            <VotePanel 
-              celebrityId={celebrityId}
+            <CharacterVotePanel 
+              characterId={characterId}
               user={user}
               hasVotedProp={voteData.hasVoted}
               initialScores={voteData.scores}
-              onVoteSuccess={fetchCelebData}
+              onVoteSuccess={fetchCharacterData}
             />
+            {/* Estetik Pano bileşenine 'celebrity' prop'u olarak karakter verisini geçiyoruz */}
             <EstetikPano 
-              celebrity={celebrity}
+              celebrity={character}
               isAdmin={isAdmin}
               onImageUpload={handleImageUpload}
               onUrlUpdate={handleUrlUpdate}
@@ -239,13 +245,13 @@ export default function UnluDetaySayfasi() {
 
         </div>
 
-        {/* YENİ: Jenerik Yorum Sistemi Entegrasyonu */}
+        {/* YENİ: Jenerik Yorum Sistemi Entegrasyonu (Karakterlere Özel) */}
         <GenericCommentSection 
-          tableName="celebrity_comments" 
-          targetColumn="celebrity_id" 
-          targetId={celebrityId} 
-          title="Değerlendirme Ekle" 
-          placeholder="Profil hakkındaki detaylı fikrini belirt..."
+          tableName="character_comments" 
+          targetColumn="character_id" 
+          targetId={characterId} 
+          title="Karakter Analizi Ekle" 
+          placeholder="Karakterin kemik yapısı ve aurası hakkındaki detaylı fikrini belirt..."
         />
 
       </main>

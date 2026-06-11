@@ -6,11 +6,13 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   
-  // Giriş tamamlandıktan sonra nereye gidecek? (Varsayılan: Ana Sayfa)
-  const next = searchParams.get('next') ?? '/';
+  // GÜVENLİK DÜZELTMESİ: next parametresini kontrol altına aldık
+  let next = searchParams.get('next') ?? '/';
+  if (!next.startsWith('/') || next.startsWith('//')) {
+    next = '/';
+  }
 
   if (code) {
-    // İŞTE DÜZELTTİĞİMİZ YER: await ekledik!
     const cookieStore = await cookies(); 
     
     const supabase = createServerClient(
@@ -25,13 +27,12 @@ export async function GET(request: Request) {
             cookieStore.set({ name, value, ...options });
           },
           remove(name: string, options: CookieOptions) {
-            cookieStore.set({ name, value: '', ...options }); // delete yerine boş set kullanmak daha güvenlidir
+            cookieStore.set({ name, value: '', ...options }); 
           },
         },
       }
     );
 
-    // Kodu güvenli bir Session'a çevir ve çerezlere yaz
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     
     if (!error) {
@@ -39,6 +40,5 @@ export async function GET(request: Request) {
     }
   }
 
-  // İşlem başarısız olursa ana sayfaya at
   return NextResponse.redirect(`${origin}/`);
 }

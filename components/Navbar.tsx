@@ -11,12 +11,9 @@ export default function Navbar() {
   const { user, profile } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  // YENİ: Sözleşme onaylı giriş modalı için state
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
-    // Hem mobil menü hem de giriş modalı açıkken arkadaki kaydırmayı durdur
     if (isMobileMenuOpen || isLoginModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -38,9 +35,20 @@ export default function Navbar() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/");
-    router.refresh(); 
+    // ÇIKIŞ YAPAMAMA SORUNU YAMASI: 
+    // Önce Supabase'den çıkışı bekle, hata yoksa zorla ana sayfaya at ve hard-refresh at.
+    const { error } = await supabase.auth.signOut();
+    
+    if (!error) {
+      router.push("/");
+      router.refresh();
+      // Next.js App Router cache'ini tam kırmak ve state'leri temizlemek için:
+      setTimeout(() => {
+         window.location.href = "/";
+      }, 100);
+    } else {
+      console.error("Çıkış yapılırken bir hata oluştu:", error);
+    }
   };
 
   return (
@@ -92,7 +100,6 @@ export default function Navbar() {
               </>
             ) : (
               <button 
-                // YENİ: Artık direkt login yapmıyor, sözleşme modalını açıyor
                 onClick={() => setIsLoginModalOpen(true)}
                 className="dergi-btn hover:text-black hover:bg-white cursor-pointer py-3 px-8"
               >
@@ -133,7 +140,6 @@ export default function Navbar() {
             </>
           ) : (
             <button 
-              // YENİ: Mobilde de butona basınca önce menüyü kapatıp modalı açıyor
               onClick={() => { setIsMobileMenuOpen(false); setIsLoginModalOpen(true); }} 
               className="dergi-btn hover:bg-white hover:text-black"
             >
@@ -143,12 +149,11 @@ export default function Navbar() {
         </nav>
       </div>
 
-      {/* YENİ: GİRİŞ VE SÖZLEŞME MODALI */}
+      {/* GİRİŞ VE SÖZLEŞME MODALI */}
       {isLoginModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-6">
           <div className="bg-[#050505] border dergi-border p-8 md:p-12 max-w-lg w-full flex flex-col items-center text-center relative animate-title">
             
-            {/* Kapat Butonu */}
             <button 
               onClick={() => setIsLoginModalOpen(false)} 
               className="absolute top-4 right-6 text-white/30 hover:text-white transition-colors text-2xl font-light"
@@ -160,14 +165,13 @@ export default function Navbar() {
             <h2 className="dergi-title text-3xl md:text-4xl mb-6">Giriş.</h2>
             
             <p className="dergi-body text-xs md:text-sm mb-10 leading-relaxed text-white/50">
-              Devam ederek, platformumuzun yasal kurallarını belirleyen <Link href="/gizlilik" onClick={() => setIsLoginModalOpen(false)} className="text-white/80 hover:text-white underline underline-offset-4 transition-colors">Kullanıcı Sözleşmesi</Link>'ni ve <Link href="/gizlilik" onClick={() => setIsLoginModalOpen(false)} className="text-white/80 hover:text-white underline underline-offset-4 transition-colors">Gizlilik Politikası</Link>'nı okuduğunuzu, anladığınızı ve gayrikabili rücu olarak kabul ettiğinizi onaylamış olursunuz.
+              Devam ederek, platformumuzun yasal kurallarını belirleyen <Link href="/sozlesme" onClick={() => setIsLoginModalOpen(false)} className="text-white/80 hover:text-white underline underline-offset-4 transition-colors">Kullanıcı Sözleşmesi</Link>'ni ve <Link href="/gizlilik" onClick={() => setIsLoginModalOpen(false)} className="text-white/80 hover:text-white underline underline-offset-4 transition-colors">Gizlilik Politikası</Link>'nı okuduğunuzu, anladığınızı ve gayrikabili rücu olarak kabul ettiğinizi onaylamış olursunuz.
             </p>
             
             <button 
               onClick={handleGoogleLogin} 
               className="dergi-btn w-full hover:bg-white hover:text-black hover:border-white transition-all flex items-center justify-center gap-3"
             >
-              {/* Basit bir Google G ikonu eklenebilir veya sadece metin */}
               GOOGLE İLE DEVAM ET
             </button>
           </div>

@@ -22,7 +22,6 @@ export default function ReportsTab({ reports, setReports, onPunishClick }: Repor
   };
 
   const handleDeleteContent = async (report: UserReport) => {
-    // YENİ YAMA: Karakter yorumlarını da (character_comment_id) kontrole dahil ettik
     if (!report.forum_comment_id && !report.celeb_comment_id && !report.character_comment_id && !report.topic_id) {
       alert("HATA: Silinecek hedef içerik zaten veritabanından kaldırılmış.");
       return;
@@ -38,7 +37,6 @@ export default function ReportsTab({ reports, setReports, onPunishClick }: Repor
         const { error } = await supabase.rpc('admin_delete_content', { content_type: 'celebrity_comment', target_id: report.celeb_comment_id });
         if (error) throw error;
       } else if (report.character_comment_id) {
-        // YENİ: Karakter yorumu silme RPC çağrısı
         const { error } = await supabase.rpc('admin_delete_content', { content_type: 'character_comment', target_id: report.character_comment_id });
         if (error) throw error;
       } else if (report.topic_id) {
@@ -70,8 +68,8 @@ export default function ReportsTab({ reports, setReports, onPunishClick }: Repor
       {reports.map((report) => {
         const targetTopicId = report.topic_id || report.forum_comment?.topic_id;
         const targetCelebId = report.celeb_comment?.celebrity_id;
-        // YENİ: Karakter ID'sini çıkarıyoruz ki Olay Yerine Git butonu çalışsın
-        const targetCharId = (report as any).character_comment?.character_id;
+        // Tip güvenliği (any kaldırıldı)
+        const targetCharId = report.character_comment?.character_id;
 
         return (
           <div key={report.id} className="bg-white/[0.02] border border-red-500/10 p-6 md:p-8 rounded-3xl backdrop-blur-md flex flex-col gap-6 relative overflow-hidden group">
@@ -104,11 +102,10 @@ export default function ReportsTab({ reports, setReports, onPunishClick }: Repor
                   <p className="text-[10px] font-mono text-white/30 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">Şikayet Edilen Ünlü Yorumu</p>
                   <p className="text-white/80 font-light italic leading-relaxed">"{report.celeb_comment.content}"</p>
                 </>
-              ) : (report as any).character_comment ? (
-                // YENİ: Karakter yorumlarının panolara düşme mantığı
+              ) : report.character_comment ? (
                 <>
                   <p className="text-[10px] font-mono text-white/30 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">Şikayet Edilen Karakter Yorumu</p>
-                  <p className="text-white/80 font-light italic leading-relaxed">"{(report as any).character_comment.content}"</p>
+                  <p className="text-white/80 font-light italic leading-relaxed">"{report.character_comment.content}"</p>
                 </>
               ) : report.topic ? (
                 <>
@@ -131,7 +128,6 @@ export default function ReportsTab({ reports, setReports, onPunishClick }: Repor
                   Ünlü Profiline Git
                 </Link>
               )}
-              {/* YENİ: Karakter Profiline Git Butonu */}
               {targetCharId && (
                 <Link href={`/karakterler/${targetCharId}`} target="_blank" className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-mono uppercase tracking-[0.2em] px-5 py-3 rounded-full transition-all text-center">
                   Karakter Profiline Git
@@ -142,8 +138,7 @@ export default function ReportsTab({ reports, setReports, onPunishClick }: Repor
                 Kapat (İhlal Yok)
               </button>
               
-              {/* SİLME BUTONU GÜNCELLEMESİ */}
-              {(report.forum_comment || report.celeb_comment || (report as any).character_comment || report.topic) && (
+              {(report.forum_comment || report.celeb_comment || report.character_comment || report.topic) && (
                 <button onClick={() => handleDeleteContent(report)} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-mono uppercase tracking-[0.2em] px-5 py-3 rounded-full transition-all">
                   İçeriği Sil
                 </button>

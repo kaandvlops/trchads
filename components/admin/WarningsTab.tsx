@@ -16,16 +16,20 @@ export default function WarningsTab({ warnings, setWarnings }: WarningsTabProps)
     if (!window.confirm("Bu kullanıcının ban cezasını kaldırmak istediğinize emin misiniz?")) return;
     
     try {
-      // GÜVENLİK YAMASI: RLS atlayan yöneticiye özel RPC çağrısı.
       const { error } = await supabase.rpc('admin_unban_user', { 
         target_user_id: userId 
       });
       
       if (error) throw error;
       
+      // BAN KALDIRMA UI YAMASI: 
+      // Null vermek yerine, süresi dolmuş bir tarihi zorla state'e işleyerek 
+      // React'in "Banlı" rozetini ve butonunu ekrandan kesin olarak silmesini sağlıyoruz.
+      const expiredDate = new Date("1970-01-01").toISOString();
+
       setWarnings(warnings.map(w => {
         if (w.user_id === userId && w.warned_user) {
-          return { ...w, warned_user: { ...w.warned_user, banned_until: null } };
+          return { ...w, warned_user: { ...w.warned_user, banned_until: expiredDate } };
         }
         return w;
       }));
@@ -40,7 +44,6 @@ export default function WarningsTab({ warnings, setWarnings }: WarningsTabProps)
     }
   };
 
-  // OPTİMİZASYON: Reverse kullanmadan, sondan başa (eskiden yeniye) doğru tarayarak sayımı yapıyoruz.
   const warningsWithCounts = useMemo(() => {
     const userCounts: Record<string, number> = {};
     const result = new Array(warnings.length);
@@ -65,6 +68,7 @@ export default function WarningsTab({ warnings, setWarnings }: WarningsTabProps)
   return (
     <div className="flex flex-col gap-4">
       {warningsWithCounts.map((warn) => {
+        // UI kontrolü: Şu anki tarihten büyük mü? Değilse ban yoktur.
         const isBanned = warn.warned_user?.banned_until && new Date(warn.warned_user.banned_until) > new Date();
         
         return (

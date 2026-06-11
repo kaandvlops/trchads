@@ -27,7 +27,7 @@ export function useContentGuard() {
       return false;
     }
 
-    // UI Düzeyinde Hız Sınırı (F5/LocalStorage bypass edilebilir, asıl limit DB'de olmalıdır)
+    // Arayüz Hız Sınırı (UI Rate Limiting)
     const now = Date.now();
     const lastActionTime = parseInt(localStorage.getItem("trchads_last_action") || "0", 10);
     const timePassed = now - lastActionTime;
@@ -58,8 +58,11 @@ export function useContentGuard() {
     } catch (error: any) {
       console.error("Supabase Reddi:", error.message);
       
+      // Güvenlik: DB tarafındaki RLS (Row Level Security) veya yasaklanma durumlarını yakala
       if (error.message?.includes("row-level security")) {
-        setSecurityError("Erişim reddedildi. Bu işlemi yapmak için yetkiniz bulunmuyor veya hesabınız (RLS) kısıtlanmış olabilir.");
+        setSecurityError("Erişim reddedildi. Bu işlemi yapmak için yetkiniz bulunmuyor veya hesabınız kısıtlanmış (banned) olabilir.");
+      } else if (error.code === '429') {
+        setSecurityError("Sistem meşgul, çok fazla istek gönderildi. Lütfen biraz bekleyin.");
       } else {
         setSecurityError("Sistemsel bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
       }
