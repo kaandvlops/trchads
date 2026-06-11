@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/types";
@@ -20,48 +20,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // YENİ: Agresif Yoklama (Polling) Mekanizması
-  // Google ile ilk kayıtta veritabanının profili oluşturması 1-2 saniye sürebilir.
-  // Bu yüzden pes etmeyip 5 kere şans veriyoruz.
-  const fetchProfile = useCallback(async (userId: string) => {
-    for (let i = 0; i < 5; i++) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (data) {
-        setProfile(data as UserProfile);
-        return true; // Bulduk, döngüyü bitir
-      }
-      
-      // Bulunamadıysa 1 saniye bekle ve tekrar dene
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-    
-    // 5 saniyenin sonunda hala yoksa boş bırak
-    setProfile(null);
-    return false;
-  }, []);
-
   useEffect(() => {
     let mounted = true;
 
-    const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!mounted) return;
-      
-      setUser(session?.user || null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+    // YENİ: Akıllı ve Hata Korumalı Profil Arama
+    // Yeni kayıtlarda veritabanı tetikleyicisinin çalışmasını tolere etmek için 600ms arayla 4 kez şans tanır.
+    const fetchProfileSafely = async (userId: string, attempt = 1): Promise<UserProfile | null> => {
+      try {
+        const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+        if (data) return data as UserProfile;
+        
+        if (attempt < 4) {
+          await new Promise(resolve => setTimeout(resolve, 600));
+          return fetchProfileSafely(userId, attempt + 1);
+        }
+      } catch (error) {
+        console.error("Profil arama hatası:", error);
       }
-      
-      if (mounted) setLoading(false);
+      return null;
     };
 
-    initAuth();
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        setUser(session?.user || null);
+
+        if (session?.user) {
+          const userProfile = await fetchProfileSafely(session.user.id);
+          if (mounted) setProfile(userProfile);
+        }
+      } catch (error) {
+        console.error("Kimlik doğrulama başlatılamadı:", error);
+      } finally {
+        // EN KRİTİK NOKTA: İşlem başarılı da olsa çökse de yükleme ekranını ZORLA kapat!
+        if (mounted) setLoading(false);
+      }
+    };
+
+    initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
@@ -69,13 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user || null);
       
       if (event === 'SIGNED_IN' && session?.user) {
-        // Oturum açıldığında yükleme ekranını zorla aktif et ve profili bekle
-        setLoading(true);
-        await fetchProfile(session.user.id);
-        setLoading(false);
+        const userProfile = await fetchProfileSafely(session.user.id);
+        if (mounted) setProfile(userProfile);
       } else if (event === 'SIGNED_OUT') {
-        setProfile(null);
-        setLoading(false);
+        if (mounted) setProfile(null);
       }
     });
 
@@ -83,9 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, []);
 
-  const isBanned = profile?.banned_until ? new Date(profile.banned_until) > new Date() : false;
+  const isBanned = !!profile?.banned_until && new Date(profile.banned_until).getTime() > Date.now();
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, setProfile, isBanned }}>
