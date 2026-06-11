@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/types";
@@ -19,37 +19,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  const isFetchingRef = useRef(false);
 
-  // YENİ: Akıllı Tekrar Deneme (Retry) Mekanizması
-  // Veritabanı profili oluşturana kadar yarımşar saniye arayla 3 kez şans tanır.
-  const fetchProfile = useCallback(async (userId: string, retries = 3): Promise<void> => {
-    if (isFetchingRef.current) return;
-    isFetchingRef.current = true;
+  // YENİ: Agresif Yoklama (Polling) Mekanizması
+  // Google ile ilk kayıtta veritabanının profili oluşturması 1-2 saniye sürebilir.
+  // Bu yüzden pes etmeyip 5 kere şans veriyoruz.
+  const fetchProfile = useCallback(async (userId: string) => {
+    for (let i = 0; i < 5; i++) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
 
-    try {
-      for (let i = 0; i < retries; i++) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (data) {
-          setProfile(data as UserProfile);
-          break; // Profil bulundu, döngüden çık
-        } else if (i < retries - 1) {
-          // Profil bulunamadıysa ve hakkımız bitmediyse 500ms bekle (Race Condition Yaması)
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } else {
-          // Tüm haklar bitti, profil gerçekten yok
-          setProfile(null);
-        }
+      if (data) {
+        setProfile(data as UserProfile);
+        return true; // Bulduk, döngüyü bitir
       }
-    } finally {
-      isFetchingRef.current = false;
+      
+      // Bulunamadıysa 1 saniye bekle ve tekrar dene
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
+    
+    // 5 saniyenin sonunda hala yoksa boş bırak
+    setProfile(null);
+    return false;
   }, []);
 
   useEffect(() => {
@@ -58,13 +51,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (mounted) {
-        setUser(session?.user || null);
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        }
-        setLoading(false);
+      if (!mounted) return;
+      
+      setUser(session?.user || null);
+      if (session?.user) {
+        await fetchProfile(session.user.id);
       }
+      
+      if (mounted) setLoading(false);
     };
 
     initAuth();
@@ -72,13 +66,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      const currentUser = session?.user || null;
-      setUser(currentUser);
+      setUser(session?.user || null);
       
-      if (event === 'SIGNED_IN' && currentUser) {
-        await fetchProfile(currentUser.id);
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Oturum açıldığında yükleme ekranını zorla aktif et ve profili bekle
+        setLoading(true);
+        await fetchProfile(session.user.id);
+        setLoading(false);
       } else if (event === 'SIGNED_OUT') {
         setProfile(null);
+        setLoading(false);
       }
     });
 

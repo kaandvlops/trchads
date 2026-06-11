@@ -22,17 +22,19 @@ export default function WarningsTab({ warnings, setWarnings }: WarningsTabProps)
       
       if (error) throw error;
       
-      // BAN KALDIRMA UI YAMASI: 
-      // Null vermek yerine, süresi dolmuş bir tarihi zorla state'e işleyerek 
-      // React'in butonları ve rozetleri anında kaldırmasını garanti altına alıyoruz.
-      const expiredDate = new Date("1970-01-01").toISOString();
-
-      setWarnings(warnings.map(w => {
-        if (w.user_id === userId && w.warned_user) {
-          return { ...w, warned_user: { ...w.warned_user, banned_until: expiredDate } };
-        }
-        return w;
-      }));
+      // ÇÖZÜM: setWarnings içine doğrudan array vermek yerine 
+      // (prevWarnings) diyerek React'in en güncel DOM durumunu yakalamasını sağladık.
+      setWarnings((prevWarnings) => 
+        prevWarnings.map(w => {
+          if (w.user_id === userId && w.warned_user) {
+            return { 
+              ...w, 
+              warned_user: { ...w.warned_user, banned_until: null } 
+            };
+          }
+          return w;
+        })
+      );
       
       alert("Kullanıcının ban cezası başarıyla kaldırıldı.");
     } catch (error: unknown) {
