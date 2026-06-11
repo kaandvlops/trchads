@@ -11,6 +11,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "TrChads",
   description: "Modern Türkiye Chad Topluluğu",
+  keywords: ["trchads", "looksmax", "psl", "estetik puanlama", "karakter analiz"],
 };
 
 export default function RootLayout({
