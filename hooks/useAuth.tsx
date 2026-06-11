@@ -20,21 +20,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // OPTİMİZASYON: Aynı anda birden fazla kez fetch yapılmasını engellemek için
   const isFetchingRef = useRef(false);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  // YENİ: Akıllı Tekrar Deneme (Retry) Mekanizması
+  // Veritabanı profili oluşturana kadar yarımşar saniye arayla 3 kez şans tanır.
+  const fetchProfile = useCallback(async (userId: string, retries = 3): Promise<void> => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
 
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
+    try {
+      for (let i = 0; i < retries; i++) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .maybeSingle();
 
-    setProfile(data ? (data as UserProfile) : null);
-    isFetchingRef.current = false;
+        if (data) {
+          setProfile(data as UserProfile);
+          break; // Profil bulundu, döngüden çık
+        } else if (i < retries - 1) {
+          // Profil bulunamadıysa ve hakkımız bitmediyse 500ms bekle (Race Condition Yaması)
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } else {
+          // Tüm haklar bitti, profil gerçekten yok
+          setProfile(null);
+        }
+      }
+    } finally {
+      isFetchingRef.current = false;
+    }
   }, []);
 
   useEffect(() => {
@@ -60,7 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const currentUser = session?.user || null;
       setUser(currentUser);
       
-      // Sadece oturum açıldığında veya kullanıcı değiştiğinde profili çek
       if (event === 'SIGNED_IN' && currentUser) {
         await fetchProfile(currentUser.id);
       } else if (event === 'SIGNED_OUT') {

@@ -24,7 +24,7 @@ export default function WarningsTab({ warnings, setWarnings }: WarningsTabProps)
       
       // BAN KALDIRMA UI YAMASI: 
       // Null vermek yerine, süresi dolmuş bir tarihi zorla state'e işleyerek 
-      // React'in "Banlı" rozetini ve butonunu ekrandan kesin olarak silmesini sağlıyoruz.
+      // React'in butonları ve rozetleri anında kaldırmasını garanti altına alıyoruz.
       const expiredDate = new Date("1970-01-01").toISOString();
 
       setWarnings(warnings.map(w => {
