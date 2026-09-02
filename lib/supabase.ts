@@ -5,6 +5,9 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createBrowserClient(supabaseUrl, supabaseKey, {
   auth: {
-    lock: false, // Web Locks deadlock kilidini devre dışı bırakır
+    // Web Locks deadlock kilidini baypas eder ve işlemi doğrudan çalıştırır
+    lock: async (_name, _acquireTimeout, fn) => {
+      return await fn();
+    },
   },
 });
