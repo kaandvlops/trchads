@@ -3,15 +3,16 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
+import { useAuth } from "@/hooks/useAuth";
 
 // Hardcore Looksmaxxing Kriterleri
 interface CharacterScoreData {
-  jawline: number;   // Çene Hattı, Ramus, Kütlük
-  eyes: number;      // Hunter Eyes, Canthal Tilt, Göz Çevresi
-  midface: number;   // Orta Yüz, Burun Yapısı, Kompaktlık
-  harmony: number;   // Yüz Simetrisi, Altın Oran (Facial Harmony)
-  dimorphism: number;// Maskülen/Feminen Keskinlik (Sexual Dimorphism)
-  grooming: number;  // Saç Çizgisi, Sakal, Cilt Kalitesi (Halo Effect)
+  jawline: number;    // Çene Hattı, Ramus, Kütlük
+  eyes: number;       // Hunter Eyes, Canthal Tilt, Göz Çevresi
+  midface: number;    // Orta Yüz, Burun Yapısı, Kompaktlık
+  harmony: number;    // Yüz Simetrisi, Altın Oran (Facial Harmony)
+  dimorphism: number; // Maskülen/Feminen Keskinlik (Sexual Dimorphism)
+  grooming: number;   // Saç Çizgisi, Sakal, Cilt Kalitesi (Halo Effect)
 }
 
 interface CharacterVotePanelProps {
@@ -23,6 +24,9 @@ interface CharacterVotePanelProps {
 }
 
 export default function CharacterVotePanel({ characterId, user, hasVotedProp, initialScores, onVoteSuccess }: CharacterVotePanelProps) {
+  const { user: authUser, isBanned } = useAuth();
+  const currentUser = user || authUser;
+
   const [scores, setScores] = useState<CharacterScoreData>(initialScores);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasVoted, setHasVoted] = useState(hasVotedProp);
@@ -32,20 +36,47 @@ export default function CharacterVotePanel({ characterId, user, hasVotedProp, in
     setHasVoted(hasVotedProp);
   }, [initialScores, hasVotedProp]);
 
+  // Puanları 1 ile 10 arasında güvenli tutan yardımcı fonksiyon
+  const sanitizeScore = (val: number) => {
+    const num = Number(val);
+    if (isNaN(num)) return 5.0;
+    return Math.min(10, Math.max(1, Math.round(num * 10) / 10));
+  };
+
   const handleVoteSubmit = async () => {
-    if (!user) return alert("Değerlendirme yapmak için sistemde kimliğinizi doğrulamalısınız.");
+    if (!currentUser) {
+      alert("Değerlendirme yapmak için sistemde kimliğinizi doğrulamalısınız.");
+      return;
+    }
+
+    if (isBanned) {
+      alert("Hesabınız uzaklaştırıldığı için oy kullanamazsınız.");
+      return;
+    }
+
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
-      if (hasVoted) {
-        const { error } = await supabase.from("character_votes").update(scores).eq("user_id", user.id).eq("character_id", characterId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("character_votes").insert([{ ...scores, user_id: user.id, character_id: characterId }]);
-        if (error) throw error;
-        setHasVoted(true);
-      }
+      const sanitizedPayload = {
+        user_id: currentUser.id,
+        character_id: characterId,
+        jawline: sanitizeScore(scores.jawline),
+        eyes: sanitizeScore(scores.eyes),
+        midface: sanitizeScore(scores.midface),
+        harmony: sanitizeScore(scores.harmony),
+        dimorphism: sanitizeScore(scores.dimorphism),
+        grooming: sanitizeScore(scores.grooming),
+      };
+
+      // GÜVENLİK: upsert ile yarış durumu (race condition) ve mükerrer oy hatası önlenir
+      const { error } = await supabase
+        .from("character_votes")
+        .upsert(sanitizedPayload, { onConflict: "user_id,character_id" });
+
+      if (error) throw error;
       
+      setHasVoted(true);
       alert("Yüz analizi başarıyla PSL veri tabanına işlendi.");
       onVoteSuccess();
     } catch (err: unknown) {
@@ -74,7 +105,7 @@ export default function CharacterVotePanel({ characterId, user, hasVotedProp, in
         className="w-full appearance-none bg-indigo-900/30 h-[1px] outline-none 
                   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-1.5 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-indigo-400 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:cursor-pointer hover:[&::-webkit-slider-thumb]:bg-indigo-300 [&::-webkit-slider-thumb]:transition-all 
                   transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
-        disabled={!user || isSubmitting}
+        disabled={!currentUser || isSubmitting || isBanned}
       />
     </div>
   );
@@ -95,7 +126,13 @@ export default function CharacterVotePanel({ characterId, user, hasVotedProp, in
           )}
         </div>
 
-        {!user && (
+        {isBanned && (
+          <div className="border border-red-500/30 bg-red-950/20 p-4 mb-6 text-center dergi-kicker text-red-400">
+            HESABINIZ UZAKLAŞTIRILDIĞI İÇİN OY KULLANAMAZSINIZ.
+          </div>
+        )}
+
+        {!currentUser && (
           <div className="border border-indigo-500/20 bg-indigo-950/10 p-6 mb-10 flex flex-col items-center justify-center text-center">
             <span className="dergi-kicker mb-2 text-indigo-300">Erişim Sınırlı</span>
             <p className="dergi-body uppercase text-xs mb-0">Sisteme kimliğinizi tanıtmalısınız.</p>
@@ -112,7 +149,8 @@ export default function CharacterVotePanel({ characterId, user, hasVotedProp, in
         </div>
 
         <button 
-          onClick={handleVoteSubmit} disabled={!user || isSubmitting}
+          onClick={handleVoteSubmit} 
+          disabled={!currentUser || isSubmitting || isBanned}
           className="dergi-btn w-full mt-10 disabled:opacity-30 disabled:cursor-not-allowed bg-black hover:border-indigo-400 hover:text-indigo-400"
         >
           {isSubmitting ? "Arşive İşleniyor..." : (hasVoted ? "Analizi Güncelle" : "Sisteme Gönder")}

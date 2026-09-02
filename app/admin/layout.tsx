@@ -9,27 +9,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   useEffect(() => {
-    // 1. ZIRH: Eğer auth sistemi hala yükleniyorsa hiçbir şey yapma, bekle.
+    // Auth ve profil yüklemesi devam ediyorsa bekle
     if (loading) return;
 
-    // 2. ZIRH: Kullanıcı hiç giriş yapmamışsa anasayfaya şutla.
-    if (!user) {
-      router.push("/");
-      return;
-    }
-
-    // 3. ZIRH (KRİTİK): Kullanıcı var ama profil verisi (is_admin) henüz gelmediyse bekle!
-    // Seni kapı dışarı eden hatanın kaynağı burasıydı.
-    if (user && !profile) return;
-
-    // 4. ZIRH: Profil geldi ve is_admin false ise anasayfaya şutla.
-    if (profile && !profile.is_admin) {
-      router.push("/");
+    // Yükleme bittiğinde kullanıcı yoksa veya admin değilse ana sayfaya yönlendir
+    // (router.replace geçmişe ekleme yapmaz, geri tuşu döngüsünü önler)
+    if (!user || !profile?.is_admin) {
+      router.replace("/");
     }
   }, [user, profile, loading, router]);
 
-  // Auth durumu netleşene veya profil verisi gelene kadar bekleme ekranını göster
-  if (loading || (user && !profile)) {
+  // Auth durumu netleşene kadar bekleme ekranını göster
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white/50 tracking-[0.3em] uppercase text-xs">
         Yönetici Kimliği Doğrulanıyor...
@@ -37,11 +28,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  // Eğer kullanıcı yoksa veya admin değilse HTML render etme (Görsel flash riskini sıfırlar)
+  // Kullanıcı yoksa veya admin değilse içeriği render etme
   if (!user || !profile?.is_admin) {
     return null; 
   }
 
-  // Her şey tamamsa Admin sayfasını (children) göster
   return <>{children}</>;
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ScoreData {
   appearance: number; 
@@ -22,6 +23,9 @@ interface VotePanelProps {
 }
 
 export default function VotePanel({ celebrityId, user, hasVotedProp, initialScores, onVoteSuccess }: VotePanelProps) {
+  const { user: authUser, isBanned } = useAuth();
+  const currentUser = user || authUser;
+
   const [scores, setScores] = useState<ScoreData>(initialScores);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasVoted, setHasVoted] = useState(hasVotedProp);
@@ -31,20 +35,47 @@ export default function VotePanel({ celebrityId, user, hasVotedProp, initialScor
     setHasVoted(hasVotedProp);
   }, [initialScores, hasVotedProp]);
 
+  // Puanları 1 ile 10 arasında güvenli tutan yardımcı fonksiyon
+  const sanitizeScore = (val: number) => {
+    const num = Number(val);
+    if (isNaN(num)) return 5.0;
+    return Math.min(10, Math.max(1, Math.round(num * 10) / 10));
+  };
+
   const handleVoteSubmit = async () => {
-    if (!user) return alert("Değerlendirme yapmak için sistemde kimliğinizi doğrulamalısınız.");
+    if (!currentUser) {
+      alert("Değerlendirme yapmak için sistemde kimliğinizi doğrulamalısınız.");
+      return;
+    }
+
+    if (isBanned) {
+      alert("Hesabınız uzaklaştırıldığı için oy kullanamazsınız.");
+      return;
+    }
+
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
-      if (hasVoted) {
-        const { error } = await supabase.from("votes").update(scores).eq("user_id", user.id).eq("celebrity_id", celebrityId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("votes").insert([{ ...scores, user_id: user.id, celebrity_id: celebrityId }]);
-        if (error) throw error;
-        setHasVoted(true);
-      }
+      const sanitizedPayload = {
+        user_id: currentUser.id,
+        celebrity_id: celebrityId,
+        appearance: sanitizeScore(scores.appearance),
+        symmetry: sanitizeScore(scores.symmetry),
+        jawline: sanitizeScore(scores.jawline),
+        eyes: sanitizeScore(scores.eyes),
+        style: sanitizeScore(scores.style),
+        charisma: sanitizeScore(scores.charisma),
+      };
+
+      // GÜVENLİK: upsert ile yarış durumu (race condition) ve mükerrer oy hatası önlenir
+      const { error } = await supabase
+        .from("votes")
+        .upsert(sanitizedPayload, { onConflict: "user_id,celebrity_id" });
+
+      if (error) throw error;
       
+      setHasVoted(true);
       alert("Analiziniz başarıyla arşive kaydedildi.");
       onVoteSuccess();
     } catch (err: unknown) {
@@ -73,7 +104,7 @@ export default function VotePanel({ celebrityId, user, hasVotedProp, initialScor
         className="w-full appearance-none bg-white/10 h-[1px] outline-none 
                   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-1.5 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:cursor-pointer hover:[&::-webkit-slider-thumb]:bg-white/80 [&::-webkit-slider-thumb]:transition-all 
                   transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
-        disabled={!user || isSubmitting}
+        disabled={!currentUser || isSubmitting || isBanned}
       />
     </div>
   );
@@ -94,7 +125,13 @@ export default function VotePanel({ celebrityId, user, hasVotedProp, initialScor
           )}
         </div>
 
-        {!user && (
+        {isBanned && (
+          <div className="border border-red-500/30 bg-red-950/20 p-4 mb-6 text-center dergi-kicker text-red-400">
+            HESABINIZ UZAKLAŞTIRILDIĞI İÇİN OY KULLANAMAZSINIZ.
+          </div>
+        )}
+
+        {!currentUser && (
           <div className="border dergi-border bg-black/40 p-6 mb-10 flex flex-col items-center justify-center text-center">
             <span className="dergi-kicker mb-2">Erişim Sınırlı</span>
             <p className="dergi-body uppercase text-xs mb-0">Sisteme kimliğinizi tanıtmalısınız.</p>
@@ -111,7 +148,8 @@ export default function VotePanel({ celebrityId, user, hasVotedProp, initialScor
         </div>
 
         <button 
-          onClick={handleVoteSubmit} disabled={!user || isSubmitting}
+          onClick={handleVoteSubmit} 
+          disabled={!currentUser || isSubmitting || isBanned}
           className="dergi-btn w-full mt-10 disabled:opacity-30 disabled:cursor-not-allowed bg-black"
         >
           {isSubmitting ? "Arşive İşleniyor..." : (hasVoted ? "Analizi Güncelle" : "Sisteme Gönder")}

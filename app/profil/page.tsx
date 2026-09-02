@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth"; 
 import { UserWarning } from "@/types";
+import { detectSpam } from "@/lib/blacklist";
 
 // ============================================================================
 // 1. GÜVENLİ TİPLER VE YARDIMCI FONKSİYONLAR
@@ -23,11 +24,14 @@ const isValidSocialLink = (url: string, platform: 'instagram' | 'tiktok' | 'spot
   if (url.length > 200) return false;
   try {
     const urlObject = new URL(url.startsWith('http') ? url : `https://${url}`);
+    if (urlObject.protocol !== 'http:' && urlObject.protocol !== 'https:') return false;
+    
     const host = urlObject.hostname.toLowerCase();
     
     if (platform === 'instagram' && !(host === 'instagram.com' || host.endsWith('.instagram.com'))) return false;
     if (platform === 'tiktok' && !(host === 'tiktok.com' || host.endsWith('.tiktok.com'))) return false;
-    if (platform === 'spotify' && !(host === 'spotify.com' || host.endsWith('.spotify.com') || host.includes('googleusercontent.com'))) return false;
+    // DÜZELTME: Spotify domain kontrolü düzeltildi
+    if (platform === 'spotify' && !(host === 'spotify.com' || host.endsWith('.spotify.com'))) return false;
     
     return true;
   } catch { 
@@ -40,18 +44,19 @@ const isValidAvatarUrl = (url: string) => {
   if (url.length > 255) return false;
   
   try {
-    const urlObject = new URL(url);
+    const urlObject = new URL(url.startsWith('http') ? url : `https://${url}`);
     if (urlObject.protocol !== 'http:' && urlObject.protocol !== 'https:') return false;
+
+    const host = urlObject.hostname.toLowerCase();
+    if (host.includes('dicebear.com') || host.includes('ui-avatars.com') || host.includes('googleusercontent.com') || host.includes('supabase.co')) {
+      return true;
+    }
 
     const pathname = urlObject.pathname.toLowerCase();
     const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
-    
-    if (urlObject.hostname.includes('dicebear.com') || urlObject.hostname.includes('ui-avatars.com')) return true;
-
     const hasValidExtension = validExtensions.some(ext => pathname.endsWith(ext));
-    if (!hasValidExtension) return false;
-
-    return true;
+    
+    return hasValidExtension;
   } catch {
     return false;
   }
@@ -75,7 +80,7 @@ const StatBlock = ({ label, value }: { label: string; value: number }) => (
 );
 
 const SocialButton = ({ url, prefix, label }: { url: string; prefix: string; label: string }) => (
-  <a href={url} target="_blank" rel="noopener noreferrer" className="dergi-btn py-3 px-6 flex items-center gap-3 bg-transparent">
+  <a href={url} target="_blank" rel="noopener noreferrer nofollow" className="dergi-btn py-3 px-6 flex items-center gap-3 bg-transparent">
     <span className="text-white/40">{prefix}</span> {label}
   </a>
 );
@@ -107,8 +112,6 @@ export default function ProfilSayfasi() {
   const [errorMsg, setErrorMsg] = useState("");
   
   const [warnings, setWarnings] = useState<UserWarning[]>([]);
-
-  // SİLME İŞLEMİ İÇİN YENİ STATE'LER
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -117,7 +120,7 @@ export default function ProfilSayfasi() {
   });
 
   useEffect(() => {
-    if (profile) {
+    if (profile?.id) {
       const fetchWarnings = async () => {
         const { data, error } = await supabase
           .from("user_warnings")
@@ -140,9 +143,13 @@ export default function ProfilSayfasi() {
       };
       fetchWarnings();
     }
-  }, [profile]);
+  }, [profile?.id]);
 
   const handleEditClick = () => {
+    if (isBanned) {
+      alert("Hesabınız uzaklaştırıldığı için profilinizi düzenleyemezsiniz.");
+      return;
+    }
     if (profile) {
       setEditForm({
         full_name: profile.full_name || "", 
@@ -158,16 +165,30 @@ export default function ProfilSayfasi() {
 
   const handleSave = async () => {
     if (!profile) return;
+    if (isBanned) return setErrorMsg("Hesabınız uzaklaştırıldığı için profilinizi güncelleyemezsiniz.");
     setErrorMsg("");
 
     const trimmedName = editForm.full_name.trim();
     if (!trimmedName) return setErrorMsg("İsim alanı boş bırakılamaz.");
     if (trimmedName.length > 50) return setErrorMsg("İsim en fazla 50 karakter olabilir.");
-    if (editForm.bio && editForm.bio.trim().length > 500) return setErrorMsg("Biyografi en fazla 500 karakter olabilir.");
+    
+    // GÜVENLİK: İsimde küfür/spam kontrolü
+    const nameCheck = detectSpam(trimmedName);
+    if (!nameCheck.isClean) return setErrorMsg(`İsim Topluluk Kurallarına Uygun Değil: ${nameCheck.reason}`);
+
+    if (editForm.bio && editForm.bio.trim().length > 500) {
+      return setErrorMsg("Biyografi en fazla 500 karakter olabilir.");
+    }
+    
+    // GÜVENLİK: Biyografide spam/küfür/kaçak link kontrolü
+    if (editForm.bio && editForm.bio.trim()) {
+      const bioCheck = detectSpam(editForm.bio.trim());
+      if (!bioCheck.isClean) return setErrorMsg(`Biyografi Kurallara Uygun Değil: ${bioCheck.reason}`);
+    }
     
     const formattedAvatar = editForm.avatar_url.trim() ? formatUrl(editForm.avatar_url) : null;
     if (formattedAvatar && !isValidAvatarUrl(formattedAvatar)) {
-      return setErrorMsg("Geçersiz Profil Fotoğrafı URL'si. Sadece geçerli bir resim linki girilmelidir (.jpg, .png, .gif vb).");
+      return setErrorMsg("Geçersiz Profil Fotoğrafı URL'si. Sadece geçerli bir resim linki girilmelidir (.jpg, .png, .webp, .gif).");
     }
 
     if (!isValidSocialLink(editForm.instagram_url, 'instagram')) return setErrorMsg("Geçersiz Instagram URL'si.");
@@ -181,7 +202,7 @@ export default function ProfilSayfasi() {
         .from("profiles")
         .update({
           full_name: trimmedName, 
-          bio: editForm.bio.trim(), 
+          bio: editForm.bio.trim() || null, 
           avatar_url: formattedAvatar, 
           instagram_url: formatUrl(editForm.instagram_url), 
           tiktok_url: formatUrl(editForm.tiktok_url), 
@@ -194,8 +215,8 @@ export default function ProfilSayfasi() {
       setProfile({
         ...profile, 
         full_name: trimmedName, 
-        bio: editForm.bio.trim(), 
-        avatar_url: formattedAvatar,
+        bio: editForm.bio.trim() || null, 
+        avatar_url: formattedAvatar, 
         instagram_url: formatUrl(editForm.instagram_url), 
         tiktok_url: formatUrl(editForm.tiktok_url), 
         spotify_url: formatUrl(editForm.spotify_url),
@@ -212,14 +233,12 @@ export default function ProfilSayfasi() {
     }
   };
 
-  // YENİ: YASAL UYUMLU PROFİL SİLME (SOFT DELETE) FONKSİYONU
   const handleDeleteAccount = async () => {
     if (!profile) return;
     setIsDeleting(true);
     setErrorMsg("");
 
     try {
-      // 1. Profil tablosunu anonimleştiriyoruz (IP ve id baki kalıyor)
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -229,17 +248,16 @@ export default function ProfilSayfasi() {
           instagram_url: null,
           tiktok_url: null,
           spotify_url: null,
-          is_deleted: true, // Supabase'de bu sütunu eklediğinden emin ol!
+          is_deleted: true,
           deleted_at: new Date().toISOString()
         })
         .eq("id", profile.id);
 
       if (error) throw error;
 
-      // 2. Auth oturumunu sonlandır ve ana sayfaya at
       await supabase.auth.signOut();
       window.location.href = "/"; 
-    } catch (error: unknown) {
+    } catch {
       setErrorMsg("Hesap silinirken sunucu kaynaklı bir hata oluştu.");
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -249,7 +267,7 @@ export default function ProfilSayfasi() {
   if (loading) return <div className="min-h-screen flex items-center justify-center dergi-kicker">Profil Yükleniyor...</div>;
   if (!profile) return <div className="min-h-screen flex items-center justify-center text-red-400 font-mono tracking-widest uppercase text-sm">Erişim Reddedildi. Lütfen Giriş Yapın.</div>;
 
-  const avatarUrl = profile.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profile.full_name}&backgroundColor=050505&textColor=ffffff`;
+  const avatarUrl = profile.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profile.full_name)}&backgroundColor=050505&textColor=ffffff`;
 
   return (
     <div className="w-full">
@@ -290,9 +308,11 @@ export default function ProfilSayfasi() {
                         {profile.is_admin && <span className="border dergi-border dergi-kicker px-3 py-1 mb-0">Yönetici</span>}
                       </div>
                     </div>
-                    <button onClick={handleEditClick} className="dergi-btn py-3 px-6 bg-transparent shrink-0">
-                      Profili Düzenle
-                    </button>
+                    {!isBanned && (
+                      <button onClick={handleEditClick} className="dergi-btn py-3 px-6 bg-transparent shrink-0">
+                        Profili Düzenle
+                      </button>
+                    )}
                   </div>
                   
                   <p className="dergi-body text-base md:text-lg mb-10 max-w-xl break-words">
@@ -360,7 +380,7 @@ export default function ProfilSayfasi() {
                 <StatBlock label="Açılan Konu" value={profile.total_topics} />
               </div>
 
-              {/* YENİ: TEHLİKELİ BÖLGE (HESAP SİLME) */}
+              {/* TEHLİKELİ BÖLGE (HESAP SİLME) */}
               <div className="mt-16 w-full border-t border-red-500/20 pt-10">
                 <h3 className="text-red-500 font-mono text-xs uppercase tracking-[0.4em] mb-4 flex items-center gap-3">
                   Tehlikeli Bölge
@@ -376,7 +396,7 @@ export default function ProfilSayfasi() {
                 ) : (
                   <div className="bg-[#050505] border border-red-500/30 p-6 md:p-8 flex flex-col gap-6">
                     <p className="dergi-body text-red-200/80 text-sm">
-                      Hesabınızı silmek istediğinize emin misiniz? Profiliniz sistemden anonimleştirilerek kaldırılacaktır. Ancak yasal zorunluluklar gereği IP kayıtlarınız veritabanında loglanmaya devam eder. Bu işlem geri alınamaz.
+                      Hesabınızı silmek istediğinize emin misiniz? Profiliniz sistemden anonimleştirilerek kaldırılacaktır. Bu işlem geri alınamaz.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4">
                       <button 

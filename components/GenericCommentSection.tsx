@@ -40,23 +40,25 @@ export default function GenericCommentSection({
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const fetchComments = useCallback(async () => {
-    // parent_id de dahil olmak üzere tüm verileri çekiyoruz
-    const { data, error } = await supabase
-      .from(tableName)
-      .select(`
-        *,
-        profiles!${tableName}_user_id_fkey(id, full_name, avatar_url, is_admin, is_verified)
-      `)
-      .eq(targetColumn, targetId)
-      // Ana yorumlarda yeniler üstte, yanıtlarda eskiler üstte olması için temel bir sıralama
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select(`
+          *,
+          profiles!${tableName}_user_id_fkey(id, full_name, avatar_url, is_admin, is_verified)
+        `)
+        .eq(targetColumn, targetId)
+        .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      const formattedData = data.map((item: any) => ({
-        ...item,
-        profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
-      }));
-      setComments(formattedData);
+      if (!error && data) {
+        const formattedData = data.map((item: any) => ({
+          ...item,
+          profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
+        }));
+        setComments(formattedData);
+      }
+    } catch (err) {
+      console.error("Yorum çekme hatası:", err);
     }
   }, [tableName, targetColumn, targetId]);
 
@@ -74,42 +76,46 @@ export default function GenericCommentSection({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isGifPickerOpen]);
 
-  // YENİ: Hem ana yorum hem de yanıt atabilmek için birleştirilmiş submit fonksiyonu
-  const handleSubmitContent = async (content: string, parentId: string | null = null) => {
-    if (!user || !content.trim()) return false;
+  // YENİ: Hem ana yorum hem de yanıt gönderme (Parametre sıralaması düzeltildi)
+  const handleSubmitContent = async (content: string, parentId: string | null = null): Promise<boolean> => {
+    if (!user || !content.trim() || isBanned) return false;
 
     let isSuccess = false;
 
-    await verifyAndExecute(content, async () => {
-      const { data, error } = await supabase
-        .from(tableName)
-        .insert([{ 
-          [targetColumn]: targetId, 
-          user_id: user.id, 
-          content: content,
-          parent_id: parentId // Ana yorumsa null, yanıtsa ID gider
-        }])
-        .select();
+    const executed = await verifyAndExecute(
+      content, 
+      async () => {
+        const { data, error } = await supabase
+          .from(tableName)
+          .insert([{ 
+            [targetColumn]: targetId, 
+            user_id: user.id, 
+            content: content,
+            parent_id: parentId || null
+          }])
+          .select();
 
-      if (error) throw error;
-      if (data) {
-        const newCommentData = {
-          ...data[0],
-          profiles: {
-            id: currentUserProfile?.id,
-            full_name: currentUserProfile?.full_name,
-            avatar_url: currentUserProfile?.avatar_url,
-            is_admin: currentUserProfile?.is_admin,
-            is_verified: currentUserProfile?.is_verified
-          }
-        };
-        // Yeni yorumu mevcut state'e ekle
-        setComments(prev => [newCommentData, ...prev]);
-        isSuccess = true;
-      }
-    });
+        if (error) throw error;
+        if (data && data[0]) {
+          const newCommentData = {
+            ...data[0],
+            profiles: {
+              id: currentUserProfile?.id || user.id,
+              full_name: currentUserProfile?.full_name || "Kullanıcı",
+              avatar_url: currentUserProfile?.avatar_url || null,
+              is_admin: currentUserProfile?.is_admin || false,
+              is_verified: currentUserProfile?.is_verified || false
+            }
+          };
+          
+          setComments(prev => [newCommentData, ...prev]);
+          isSuccess = true;
+        }
+      },
+      { cooldownKey: "comment" }
+    );
 
-    return isSuccess;
+    return executed && isSuccess;
   };
 
   const handleMainSubmit = async (e: React.FormEvent) => {
@@ -118,16 +124,14 @@ export default function GenericCommentSection({
     if (success) setNewComment("");
   };
 
-const handleReportSubmit = async (reason: string) => {
+  const handleReportSubmit = async (reason: string) => {
     if (!user || !reportTarget) return;
 
-    // YENİ: Hangi tabloya yorum yapılıyorsa, şikayet tablosundaki hedef sütunu belirliyoruz
     let reportColumn = "";
     if (tableName === "forum_comments") reportColumn = "forum_comment_id";
     else if (tableName === "celebrity_comments") reportColumn = "celeb_comment_id";
     else if (tableName === "character_comments") reportColumn = "character_comment_id";
 
-    // Gönderilecek temel veriler
     const payload: any = {
       reporter_id: user.id, 
       reported_user_id: reportTarget.reportedUserId,
@@ -135,7 +139,6 @@ const handleReportSubmit = async (reason: string) => {
       status: 'pending'
     };
 
-    // Yorum ID'sini doğru sütuna yerleştir
     if (reportColumn) {
       payload[reportColumn] = reportTarget.id;
     }
@@ -146,22 +149,26 @@ const handleReportSubmit = async (reason: string) => {
       console.error("Şikayet Hatası:", error);
       alert("Şikayet gönderilirken bir hata oluştu.");
     } else {
-      alert("Şikayetiniz sistem yöneticilerine başarıyla iletildi.");
+      alert("Şikayetiniz sistem yöneticilerine iletildi.");
     }
     
     setReportModalOpen(false); 
     setReportTarget(null);
   };
 
-  
   const submitWarning = async (reason: string) => {
     if (!userToWarn || !currentUserProfile?.is_admin) return;
-    await supabase.from("user_warnings").insert([{ 
+    const { error } = await supabase.from("user_warnings").insert([{ 
       user_id: userToWarn, 
       admin_id: currentUserProfile.id, 
       reason: reason 
     }]);
-    alert("Kullanıcıya sistem üzerinden başarıyla uyarı eklendi!");
+
+    if (error) {
+      alert("Uyarı eklenirken hata oluştu.");
+    } else {
+      alert("Kullanıcıya sistem üzerinden başarıyla uyarı eklendi!");
+    }
     setWarnModalOpen(false); 
     setUserToWarn(null);
   };
@@ -171,13 +178,12 @@ const handleReportSubmit = async (reason: string) => {
     try {
       const { error } = await supabase.from(tableName).delete().eq('id', commentId);
       if (error) throw error;
-      setComments(comments.filter(c => c.id !== commentId));
-    } catch (error) {
+      setComments(prev => prev.filter(c => c.id !== commentId && c.parent_id !== commentId));
+    } catch {
       alert("İşlem başarısız oldu.");
     }
   };
 
-  // YENİ: Yorumları Ana Yorumlar ve Yanıtlar olarak ayırma
   const mainComments = comments.filter(c => !c.parent_id);
 
   return (
@@ -263,7 +269,6 @@ const handleReportSubmit = async (reason: string) => {
           </p>
         ) : (
           mainComments.map((comment) => {
-            // YENİ: Bu yoruma ait yanıtları kronolojik (eski üstte) sıraya göre bul
             const commentReplies = comments
               .filter(c => c.parent_id === comment.id)
               .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -275,10 +280,10 @@ const handleReportSubmit = async (reason: string) => {
                 author={comment.profiles} 
                 currentUserId={user?.id}
                 isAdmin={currentUserProfile?.is_admin}
+                isBanned={isBanned} // GÜVENLİK: Ban prop'u iletildi
                 onReport={(id, reportedId) => { setReportTarget({ id, reportedUserId: reportedId }); setReportModalOpen(true); }}
                 onWarn={(reportedId) => { setUserToWarn(reportedId); setWarnModalOpen(true); }}
                 onDelete={handleDelete}
-                // Yanıt propları:
                 replies={commentReplies}
                 onReplySubmit={handleSubmitContent}
               />

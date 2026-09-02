@@ -9,7 +9,7 @@ import Loader from "@/components/ui/Loader";
 import { useAuth } from "@/hooks/useAuth";
 
 // ============================================================================
-// MİNİ BİLEŞENLER (Kod Kalabalığını Önlemek İçin Ana Gövdeden Ayrıldılar)
+// MİNİ BİLEŞENLER
 // ============================================================================
 
 const StatBlock = ({ label, value }: { label: string; value: number }) => (
@@ -20,7 +20,12 @@ const StatBlock = ({ label, value }: { label: string; value: number }) => (
 );
 
 const SocialButton = ({ url, label }: { url: string; label: string }) => (
-  <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-black border border-white/10 hover:border-white/30 text-white/70 hover:text-white px-6 py-3 rounded-none transition-all text-xs font-mono tracking-widest uppercase">
+  <a 
+    href={url} 
+    target="_blank" 
+    rel="noopener noreferrer nofollow" 
+    className="flex items-center gap-3 bg-black border border-white/10 hover:border-white/30 text-white/70 hover:text-white px-6 py-3 rounded-none transition-all text-xs font-mono tracking-widest uppercase"
+  >
     <span className="text-white/40">{label}</span>
   </a>
 );
@@ -51,8 +56,9 @@ export default function PublicProfilePage() {
   const router = useRouter();
   const targetUserId = params.id as string;
 
-  const { user } = useAuth();
+  const { user, profile: currentAuthProfile } = useAuth();
   const isOwnProfile = user?.id === targetUserId;
+  const isAdmin = currentAuthProfile?.is_admin;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [warnings, setWarnings] = useState<UserWarning[]>([]);
@@ -62,27 +68,33 @@ export default function PublicProfilePage() {
     const fetchProfileAndWarnings = async () => {
       if (!targetUserId) return;
 
-      const { data: profileData } = await supabase.from("profiles").select("*").eq("id", targetUserId).maybeSingle();
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", targetUserId)
+        .maybeSingle();
         
       if (profileData) {
         setProfile(profileData as UserProfile);
 
-        const { data: warningsData } = await supabase
-          .from("user_warnings")
-          .select(`*, admin_user:profiles!admin_id(full_name)`)
-          .eq("user_id", targetUserId)
-          .order("created_at", { ascending: false });
-          
-        if (warningsData) {
-          // TS Hatası giderildi: unknown yerine güvenli tip ataması yapıldı
-          setWarnings(warningsData as unknown as UserWarning[]);
+        // GÜVENLİK: Sabıka kaydı ve yetkili adları sadece profilin sahibine ve adminlere çekilir
+        if (isOwnProfile || isAdmin) {
+          const { data: warningsData } = await supabase
+            .from("user_warnings")
+            .select(`*, admin_user:profiles!admin_id(full_name)`)
+            .eq("user_id", targetUserId)
+            .order("created_at", { ascending: false });
+            
+          if (warningsData) {
+            setWarnings(warningsData as unknown as UserWarning[]);
+          }
         }
       }
       setLoading(false);
     };
 
     fetchProfileAndWarnings();
-  }, [targetUserId]);
+  }, [targetUserId, isOwnProfile, isAdmin]);
 
   const warningsWithCounts = useMemo(() => {
     return [...warnings].reverse().map((warn, index) => ({
@@ -93,10 +105,12 @@ export default function PublicProfilePage() {
 
   if (loading) return <Loader text="Kullanıcı Verileri Çekiliyor..." />;
   
-  if (!profile) {
+  if (!profile || profile.is_deleted) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
-        <div className="text-white/40 font-mono tracking-widest uppercase text-sm">Kullanıcı Bulunamadı veya Silinmiş.</div>
+        <div className="text-white/40 font-mono tracking-widest uppercase text-sm">
+          {profile?.is_deleted ? "Bu Hesap Kullanıcı Tarafından Kapatılmıştır." : "Kullanıcı Bulunamadı."}
+        </div>
         <button onClick={() => router.back()} className="text-xs font-mono text-white/50 border border-white/10 px-6 py-3 hover:bg-white/5 hover:text-white transition-all uppercase tracking-[0.3em]">
           ← Geri Dön
         </button>
@@ -105,7 +119,7 @@ export default function PublicProfilePage() {
   }
 
   const isBanned = profile.banned_until ? new Date(profile.banned_until) > new Date() : false;
-  const avatarUrl = profile.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profile.full_name}&backgroundColor=050505&textColor=ffffff`;
+  const avatarUrl = profile.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profile.full_name)}&backgroundColor=050505&textColor=ffffff`;
 
   return (
     <div className="w-full bg-black min-h-screen text-[#EAEAEA] font-sans selection:bg-white selection:text-black">
@@ -129,7 +143,7 @@ export default function PublicProfilePage() {
           <span className="text-xs uppercase tracking-[0.4em] text-white/40 font-mono">Kullanıcı Dosyası</span>
         </div>
 
-        {/* 3. ANA KART (KİMLİK BİLGİLERİ) */}
+        {/* 3. ANA KART */}
         <div className="w-full max-w-4xl bg-transparent border border-white/10 p-10 md:p-16 relative overflow-hidden group">
           <div className="flex flex-col md:flex-row gap-12 md:gap-16 items-center md:items-start">
             
@@ -164,7 +178,7 @@ export default function PublicProfilePage() {
                 {profile.bio || "Bu kullanıcı henüz kendinden bahsetmemiş."}
               </p>
 
-              {/* 4. SOSYAL MEDYA LİNKLERİ (Modüler) */}
+              {/* 4. SOSYAL MEDYA LİNKLERİ */}
               {(profile.instagram_url || profile.tiktok_url || profile.spotify_url) && (
                 <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-10">
                   {profile.instagram_url && <SocialButton url={profile.instagram_url} label="IG" />}
@@ -173,7 +187,7 @@ export default function PublicProfilePage() {
                 </div>
               )}
 
-              {/* 5. İSTATİSTİKLER (Modüler) */}
+              {/* 5. İSTATİSTİKLER */}
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-10 md:gap-16 pt-10 border-t border-white/5">
                 <StatBlock label="Sistem Puanı" value={profile.score} />
                 <div className="w-[1px] h-12 bg-white/10 hidden sm:block"></div>
@@ -182,11 +196,11 @@ export default function PublicProfilePage() {
                 <StatBlock label="Açılan Konu" value={profile.total_topics} />
               </div>
 
-              {/* 6. SABIKA KAYDI (Modüler) */}
-              {warningsWithCounts.length > 0 && (
+              {/* 6. GİZLİ SABIKA KAYDI: Yalnızca kullanıcının kendisi veya Yönetici görebilir */}
+              {(isOwnProfile || isAdmin) && warningsWithCounts.length > 0 && (
                 <div className="mt-16 w-full border-t border-white/5 pt-10 text-left">
                   <h3 className="text-red-500 font-mono text-xs uppercase tracking-[0.4em] mb-8 flex items-center gap-3 justify-center md:justify-start">
-                    <span className="w-2 h-2 bg-red-500 animate-pulse"></span> Kullanıcı Sabıka Dosyası
+                    <span className="w-2 h-2 bg-red-500 animate-pulse"></span> Kullanıcı Sabıka Dosyası (Gizli Moderasyon)
                   </h3>
                   <div className="flex flex-col gap-4">
                     {warningsWithCounts.map(w => <WarningRow key={w.id} warn={w} />)}
