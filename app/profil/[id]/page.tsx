@@ -105,7 +105,7 @@ export default function PublicProfilePage() {
 
   if (loading) return <Loader text="Kullanıcı Verileri Çekiliyor..." />;
   
-  if (!profile || profile.is_deleted) {
+  if (!profile || (profile as UserProfile & { is_deleted?: boolean }).is_deleted) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
         <div className="text-white/40 font-mono tracking-widest uppercase text-sm">

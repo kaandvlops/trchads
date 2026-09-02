@@ -12,6 +12,7 @@ export interface UserProfile {
   is_verified: boolean;
   is_admin: boolean;
   banned_until: string | null;
+  is_deleted?: boolean;
 }
 
 export interface Celebrity {
