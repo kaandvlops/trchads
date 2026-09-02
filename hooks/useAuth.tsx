@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/types";
+import { useRouter } from "next/navigation";
 
 interface AuthContextType {
   user: User | null;
@@ -19,68 +20,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const fetchedUserRef = useRef<string | null>(null);
+
+  const fetchProfileSafely = async (userId: string, attempt = 1): Promise<UserProfile | null> => {
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (data) return data as UserProfile;
+
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        return fetchProfileSafely(userId, attempt + 1);
+      }
+    } catch (error) {
+      console.error("Profil arama hatası:", error);
+    }
+    return null;
+  };
 
   useEffect(() => {
     let mounted = true;
 
-    // YENİ: Akıllı ve Hata Korumalı Profil Arama
-    // Yeni kayıtlarda veritabanı tetikleyicisinin çalışmasını tolere etmek için 600ms arayla 4 kez şans tanır.
-    const fetchProfileSafely = async (userId: string, attempt = 1): Promise<UserProfile | null> => {
-      try {
-        const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-        if (data) return data as UserProfile;
-        
-        if (attempt < 4) {
-          await new Promise(resolve => setTimeout(resolve, 600));
-          return fetchProfileSafely(userId, attempt + 1);
-        }
-      } catch (error) {
-        console.error("Profil arama hatası:", error);
-      }
-      return null;
-    };
+    // Timeout sigortası: 3 saniye içinde ne olursa olsun loading'i zorla kapat
+    const fallbackTimer = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 3000);
 
-    const initializeAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
         if (!mounted) return;
 
-        setUser(session?.user || null);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
 
-        if (session?.user) {
-          const userProfile = await fetchProfileSafely(session.user.id);
-          if (mounted) setProfile(userProfile);
+        if (currentUser) {
+          if (fetchedUserRef.current !== currentUser.id) {
+            fetchedUserRef.current = currentUser.id;
+            const userProfile = await fetchProfileSafely(currentUser.id);
+            if (mounted) {
+              setProfile(userProfile);
+              setLoading(false); // KRİTİK: Profil geldikten sonra loading'i bitir!
+            }
+          } else {
+            if (mounted) setLoading(false);
+          }
+        } else {
+          fetchedUserRef.current = null;
+          setProfile(null);
+          if (mounted) setLoading(false);
         }
-      } catch (error) {
-        console.error("Kimlik doğrulama başlatılamadı:", error);
-      } finally {
-        // EN KRİTİK NOKTA: İşlem başarılı da olsa çökse de yükleme ekranını ZORLA kapat!
-        if (mounted) setLoading(false);
-      }
-    };
 
-    initializeAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-      
-      setUser(session?.user || null);
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        const userProfile = await fetchProfileSafely(session.user.id);
-        if (mounted) setProfile(userProfile);
-      } else if (event === 'SIGNED_OUT') {
-        if (mounted) setProfile(null);
+        // Oturum değiştiğinde Next.js Server Component'lerini senkronize et
+        if (event === "SIGNED_IN") {
+          router.refresh();
+        }
       }
-    });
+    );
 
     return () => {
       mounted = false;
+      clearTimeout(fallbackTimer);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
-  const isBanned = !!profile?.banned_until && new Date(profile.banned_until).getTime() > Date.now();
+  const isBanned =
+    !!profile?.banned_until && new Date(profile.banned_until).getTime() > Date.now();
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, setProfile, isBanned }}>
