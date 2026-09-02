@@ -46,39 +46,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Timeout sigortası: 3 saniye içinde ne olursa olsun loading'i zorla kapat
+    // Timeout sigortası: En geç 2.5 saniye içinde ne olursa olsun loading'i zorla kapat
     const fallbackTimer = setTimeout(() => {
       if (mounted) setLoading(false);
-    }, 3000);
+    }, 2500);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
+      (event, session) => {
+        // KRİTİK: onAuthStateChange içinde doğrudan async/await çalıştırmak Supabase'in 
+        // dahili auth kilidini dondurur. setTimeout(..., 0) ile işlemi bir sonraki event loop'a
+        // aktararak kilidin serbest bırakılmasını sağlıyoruz.
+        setTimeout(async () => {
+          if (!mounted) return;
 
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
+          const currentUser = session?.user ?? null;
+          setUser(currentUser);
 
-        if (currentUser) {
-          if (fetchedUserRef.current !== currentUser.id) {
-            fetchedUserRef.current = currentUser.id;
-            const userProfile = await fetchProfileSafely(currentUser.id);
-            if (mounted) {
-              setProfile(userProfile);
-              setLoading(false); // KRİTİK: Profil geldikten sonra loading'i bitir!
+          if (currentUser) {
+            if (fetchedUserRef.current !== currentUser.id) {
+              fetchedUserRef.current = currentUser.id;
+              const userProfile = await fetchProfileSafely(currentUser.id);
+              if (mounted) {
+                setProfile(userProfile);
+                setLoading(false);
+              }
+            } else {
+              if (mounted) setLoading(false);
             }
           } else {
+            fetchedUserRef.current = null;
+            setProfile(null);
             if (mounted) setLoading(false);
           }
-        } else {
-          fetchedUserRef.current = null;
-          setProfile(null);
-          if (mounted) setLoading(false);
-        }
 
-        // Oturum değiştiğinde Next.js Server Component'lerini senkronize et
-        if (event === "SIGNED_IN") {
-          router.refresh();
-        }
+          if (event === "SIGNED_IN") {
+            router.refresh();
+          }
+        }, 0);
       }
     );
 
